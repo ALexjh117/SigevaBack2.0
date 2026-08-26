@@ -36,21 +36,12 @@ export default class EleccionControler {
     try {
       const dataEleccion = request.only([
         'idcentro_formacion',
-        'jornada',
         'fecha_inicio',
         'fecha_fin',
         'hora_inicio',
         'hora_fin',
         'nombre',
       ])
-
-      if (
-        dataEleccion.jornada != 'Mañana' &&
-        dataEleccion.jornada != 'Tarde' &&
-        dataEleccion.jornada != 'Noche'
-      ) {
-        return response.status(400).json({ message: 'La jornada no es válida' })
-      }
 
       if (!dataEleccion.idcentro_formacion) {
         return response
@@ -80,7 +71,7 @@ export default class EleccionControler {
           .json({ message: 'La Hora de inicio no debe ser mayor a la Hora fin' })
       }
 
-      const eleccion = await Eleccione.create(dataEleccion)
+      const eleccion = await Eleccione.create({ ...dataEleccion, jornada: null })
       return response.status(201).json({ message: 'Eleccion creada con exito', eleccion })
     } catch (error) {
       return response
@@ -98,7 +89,7 @@ export default class EleccionControler {
 
       const dataEleccion = request.only([
         'idcentro_formacion',
-        'jornada',
+       
         'fecha_inicio',
         'fecha_fin',
         'hora_inicio',
@@ -106,13 +97,9 @@ export default class EleccionControler {
         'nombre',
       ])
 
-      if (
-        dataEleccion.jornada != 'Mañana' &&
-        dataEleccion.jornada != 'Tarde' &&
-        dataEleccion.jornada != 'Noche'
-      ) {
-        return response.status(400).json({ message: 'La jornada no es válida' })
-      }
+     if(!dataEleccion.idcentro_formacion){
+      return response.status(400).json({ message: 'El campo del centro de formacion es obligatorio' })
+     }
 
       //validaciones fechas inicio y fin
       if (!dataEleccion.fecha_inicio || !dataEleccion.fecha_fin) {
@@ -138,7 +125,7 @@ export default class EleccionControler {
           .json({ message: 'La Hora de inicio no debe ser mayor a la Hora fin' })
       }
 
-      eleccion.merge(dataEleccion)
+      eleccion.merge({ ...dataEleccion, jornada: null })
       await eleccion.save()
 
       return response.status(200).json({ message: 'Eleccion actualizada con exito', eleccion })

@@ -1,0 +1,138 @@
+// SIGEVA — modelo to-be multi-tenant
+// Pegar en https://dbdiagram.io  →  Import → DBML
+// Núcleo: organización, centros, votaciones, candidatos, voto.
+
+Project SIGEVA {
+  database_type: "PostgreSQL"
+  Note: "Una base, un esquema. El tenant es organizacion. El centro es la sede."
+}
+
+Table organizacion {
+  idorganizacion int [pk, increment]
+  nombre varchar(150) [not null]
+  slug varchar(80) [unique, not null, note: "sena, colegio-x"]
+  tipo varchar(40) [not null, note: "SENA | colegio | universidad | empresa | otro"]
+  nit varchar(20)
+  estado varchar(20) [not null, default: "Activo"]
+}
+
+Table perfil {
+  idperfil int [pk]
+  perfil varchar(40) [not null, note: "Admin tenant | Gestor | Votante. SENA: Administrador, Funcionario, Aprendiz"]
+}
+
+Table regional {
+  idregional int [pk]
+  idorganizacion int [not null, ref: > organizacion.idorganizacion]
+  regional varchar(120) [not null]
+  Note: "Catálogo SENA. Un colegio no la usa."
+}
+
+Table centro_formacion {
+  idcentro_formacion int [pk]
+  idorganizacion int [not null, ref: > organizacion.idorganizacion]
+  idregional int [ref: > regional.idregional]
+  codigo_sede varchar(20) [note: "9101 en SENA"]
+  centro_formacioncol varchar(200) [not null]
+  direccion varchar(200)
+  telefono varchar(50)
+  correo varchar(120)
+  subdirector varchar(120)
+  correosubdirector varchar(120)
+  estado varchar(20) [not null, default: "Activo"]
+
+  indexes {
+    (idorganizacion, codigo_sede) [unique]
+  }
+}
+
+Table usuarios {
+  idusuarios int [pk]
+  idorganizacion int [not null, ref: > organizacion.idorganizacion]
+  idcentro_formacion int [ref: > centro_formacion.idcentro_formacion, note: "NULL = admin del tenant"]
+  idperfil int [not null, ref: > perfil.idperfil]
+  nombres varchar(80) [not null]
+  apellidos varchar(80) [not null]
+  email varchar(120) [not null]
+  password varchar(255) [not null]
+  tipo_documento varchar(20)
+  numero_documento varchar(20)
+  celular varchar(20)
+  estado varchar(20) [not null]
+
+  indexes {
+    (idorganizacion, email) [unique]
+    (idorganizacion, tipo_documento, numero_documento) [unique]
+  }
+}
+
+Table grupo {
+  idgrupo int [pk]
+  idcentro_formacion int [not null, ref: > centro_formacion.idcentro_formacion]
+  grupo varchar(40) [not null, note: "ficha SENA"]
+  jornada varchar(20) [note: "Mañana | Tarde | Noche"]
+  Note: "3FN: la organización se obtiene por el centro. Un colegio puede no usar esta tabla."
+}
+
+Table votante {
+  idvotante int [pk]
+  idcentro_formacion int [not null, ref: > centro_formacion.idcentro_formacion]
+  idgrupo int [ref: > grupo.idgrupo, note: "Opcional. En SENA es la ficha"]
+  nombres varchar(80) [not null]
+  apellidos varchar(80) [not null]
+  email varchar(120) [not null]
+  password varchar(255)
+  tipo_documento varchar(20)
+  numero_documento varchar(20)
+  celular varchar(20)
+  estado varchar(40)
+  Note: "3FN: el tenant llega por centro → organizacion. En SENA esta fila es el aprendiz."
+
+  indexes {
+    (idcentro_formacion, email) [unique]
+    (idcentro_formacion, tipo_documento, numero_documento) [unique]
+  }
+}
+
+Table elecciones {
+  ideleccion int [pk]
+  idcentro_formacion int [not null, ref: > centro_formacion.idcentro_formacion]
+  nombre varchar(150) [not null]
+  jornada varchar(20) [note: "Obligatoria en SENA"]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  hora_inicio time [not null]
+  hora_fin time [not null]
+  Note: "3FN: dueño directo = sede. Organización = centro.organizacion. Activa = ahora en la ventana."
+}
+
+Table candidatos {
+  idcandidatos int [pk]
+  ideleccion int [not null, ref: > elecciones.ideleccion]
+  idvotante int [not null, ref: > votante.idvotante]
+  propuesta text
+  foto varchar(255)
+  numero_tarjeton varchar(10) [not null]
+  Note: "3FN: el nombre se lee del votante, no se copia. Org y sede llegan por la elección."
+
+  indexes {
+    (ideleccion, numero_tarjeton) [unique]
+    (ideleccion, idvotante) [unique]
+  }
+}
+
+Table validacion_voto {
+  id int [pk]
+  idvotante int [not null, ref: > votante.idvotante]
+  ideleccion int [not null, ref: > elecciones.ideleccion]
+  codigo varchar(6) [not null, note: "Solo el OTP"]
+  estado varchar(20) [not null, note: "generado | usado | votado"]
+  expira_en timestamp
+}
+
+Table voto {
+  idvoto int [pk]
+  idvotante int [not null, ref: > votante.idvotante]
+  idcandidatos int [not null, ref: > candidatos.idcandidatos]
+  Note: "3FN: la elección se obtiene por candidato.ideleccion. Regla de urna: un votante no vota dos veces en la misma elección."
+}

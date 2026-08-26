@@ -5,6 +5,7 @@ import Regionale from './regionale.js'
 import Municipio from './municipio.js'
 import Eleccione from './eleccione.js'
 import Usuario from './usuario.js'
+import Aprendiz from './aprendiz.js'
 
 export default class CentroFormacion extends BaseModel {
   public static table = 'centro_formacion'
@@ -61,7 +62,12 @@ export default class CentroFormacion extends BaseModel {
   @hasMany(() => Usuario, {
   foreignKey: 'idcentro_formacion',
   })
-
   declare usuario: HasMany<typeof Usuario>
-  }
+
+  @hasMany(() => Aprendiz, {
+    foreignKey: 'centro_formacion_idcentro_formacion',
+    localKey: 'idcentro_formacion',
+  })
+  declare aprendices: HasMany<typeof Aprendiz>
+}
 
