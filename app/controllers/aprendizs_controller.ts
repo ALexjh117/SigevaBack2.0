@@ -345,7 +345,7 @@ export default class AprendizsController {
         .preload('programa')
         .preload('perfil')
         .preload('centro_formacion', (cf) => cf.select(['centro_formacioncol']))
-        
+
       return response.status(200).json({
         message: 'Éxito',
         data: aprendices,

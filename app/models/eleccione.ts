@@ -16,7 +16,7 @@ export default class Eleccione extends BaseModel {
   declare idcentro_formacion: number
 
   @column({columnName: 'jornada'})
-  declare jornada : string
+  declare jornada : string | null
 
   @column({columnName: 'fecha_inicio'})
   declare fecha_inicio: Date  
