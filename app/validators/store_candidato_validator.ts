@@ -7,6 +7,7 @@ export const storeCandidatoValidator = vine.compile(
     idaprendiz: vine.number(),
     propuesta: vine.string().trim(),
     numero_tarjeton: vine.string().trim(),
+    jornada: vine.enum(['Mañana', 'Tarde', 'Noche']),
     foto_url: vine.string().url().optional(),
   })
 )

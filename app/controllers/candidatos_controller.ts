@@ -21,6 +21,7 @@ export default class CandidatosController {
           idaprendiz: payload.idaprendiz,
           propuesta: payload.propuesta,
           numero_tarjeton: payload.numero_tarjeton,
+          jornada: payload.jornada,
           foto_url: payload.foto_url ?? null,
         },
         fotoFile?.tmpPath ?? null
@@ -54,7 +55,7 @@ export default class CandidatosController {
     }
   }
 
-  public async getByEleccion({ params, response }: HttpContext) {
+  public async getByEleccion({ params, request, response }: HttpContext) {
     try {
       const ideleccion = Number(params.ideleccion)
       if (Number.isNaN(Number(ideleccion))) {
@@ -63,7 +64,11 @@ export default class CandidatosController {
         })
       }
 
-      const candidatos = await CandidatosService.getAllCandidatosByIdEleccion(Number(ideleccion))
+      const { jornada } = request.qs()
+      const candidatos = await CandidatosService.getAllCandidatosByIdEleccion(
+        Number(ideleccion),
+        typeof jornada === 'string' ? jornada : undefined
+      )
 
       return response.ok({
         message: 'Candidatos obtenidos correctamente',
@@ -94,6 +99,7 @@ export default class CandidatosController {
         'idaprendiz',
         'propuesta',
         'numero_tarjeton',
+        'jornada',
         'foto_url',
       ])
 

@@ -1,8 +1,6 @@
 /* eslint-disable @unicorn/filename-case */
 /* eslint-disable prettier/prettier */
-/* eslint-disable @unicorn/filename-case */
 import Eleccione from "#models/eleccione";
-
 
 export default class FiltrarService {
     [x: string]: any;
@@ -21,6 +19,8 @@ export default class FiltrarService {
                 consultarCandidatos.where('jornada', jornada)
             }
             consultarCandidatos.preload('aprendiz')
-            })
-        }
+        })
+
+        return elecciones
     }
+}
