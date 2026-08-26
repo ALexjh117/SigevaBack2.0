@@ -8,23 +8,35 @@ type CreateCandidatoDTO = {
   idaprendiz: number
   propuesta: string
   numero_tarjeton: string
+  jornada: string
   foto_url?: string | null
 }
 
 export default class CandidatosService {
-  static async checkDuplicateTarjeton(ideleccion: number, numero_tarjeton: string) {
-    const exists = await Candidatos.query()
+  static async checkDuplicateTarjeton(
+    ideleccion: number,
+    numero_tarjeton: string,
+    jornada: string,
+    exceptId?: number
+  ) {
+    const query = Candidatos.query()
       .where('ideleccion', ideleccion)
+      .andWhere('jornada', jornada)
       .andWhere('numero_tarjeton', numero_tarjeton)
-      .first()
+
+    if (exceptId) {
+      query.whereNot('idcandidatos', exceptId)
+    }
+
+    const exists = await query.first()
 
     if (exists) {
-      throw new Error('Ya existe un candidato con ese número de tarjetón en esta elección')
+      throw new Error('Ya existe ese número de tarjetón en esta jornada')
     }
   }
 
   static async createWithOptionalUpload(data: CreateCandidatoDTO, localFilePath?: string | null) {
-    await this.checkDuplicateTarjeton(data.ideleccion, data.numero_tarjeton)
+    await this.checkDuplicateTarjeton(data.ideleccion, data.numero_tarjeton, data.jornada)
 
     const trx = await db.transaction()
     try {
@@ -42,6 +54,7 @@ export default class CandidatosService {
           idaprendiz: data.idaprendiz,
           propuesta: data.propuesta,
           numero_tarjeton: data.numero_tarjeton,
+          jornada: data.jornada,
           foto: fotoUrl ?? '',
         },
         { client: trx }
@@ -55,15 +68,16 @@ export default class CandidatosService {
     }
   }
 
-  static async getAllCandidatosByIdEleccion(ideleccion: number) {
-    const candidatos = await Candidatos.query()
-      .where('ideleccion', ideleccion)
-      .orderByRaw('RANDOM()')
-      .preload('aprendiz', (aprendiz) => {
-        aprendiz.preload('centro_formacion')
-      })
+  static async getAllCandidatosByIdEleccion(ideleccion: number, jornada?: string) {
+    const query = Candidatos.query().where('ideleccion', ideleccion)
 
-    return candidatos
+    if (jornada) {
+      query.andWhere('jornada', jornada)
+    }
+
+    return query.orderByRaw('RANDOM()').preload('aprendiz', (aprendiz) => {
+      aprendiz.preload('centro_formacion')
+    })
   }
 
   static async getCandidatoCentroFormacion(idcentroformacion: number) {
@@ -105,6 +119,16 @@ export default class CandidatosService {
       if (data.idaprendiz) candidato.idaprendiz = data.idaprendiz
       if (data.propuesta) candidato.propuesta = data.propuesta
       if (data.numero_tarjeton) candidato.numero_tarjeton = data.numero_tarjeton
+      if (data.jornada) candidato.jornada = data.jornada
+
+      if (candidato.jornada && candidato.numero_tarjeton) {
+        await this.checkDuplicateTarjeton(
+          candidato.ideleccion,
+          candidato.numero_tarjeton,
+          candidato.jornada,
+          candidato.idcandidatos
+        )
+      }
 
       await candidato.save()
       await trx.commit()

@@ -29,6 +29,9 @@ export default class Candidatos extends BaseModel {
   declare numero_tarjeton: string
 
   @column()
+  declare jornada: string
+
+  @column()
   declare idEleccion: number
 
   @column.dateTime({ autoCreate: true })
