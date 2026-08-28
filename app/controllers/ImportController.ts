@@ -10,7 +10,7 @@ import db from '@adonisjs/lucid/services/db'
 import bcrypt from 'bcrypt'
 import XLSX from 'xlsx'
 
-import Usuario from '#models/usuario'
+import { resolverActor } from '#services/actor_sesion'
 
 export default class ImportExcelController {
   public async importarAprendices({ request, response }: HttpContext) {
@@ -33,55 +33,38 @@ export default class ImportExcelController {
         'motivo'?: string
       }> = []
 
-      // 1) Contexto: userId desde el frontend
-      const userId = Number(request.input('userId'))
-      if (!userId) {
+      // 1) Actor: x-user-id o userId (HU-S2-030). Sin JWT.
+      const actor = await resolverActor(request)
+      if (!actor) {
         await trx.rollback()
-        return response.badRequest({ success: false, message: 'Falta userId en el body' })
+        return response.badRequest({ success: false, message: 'Falta userId en el body o x-user-id' })
       }
 
-      const usuario = await Usuario.find(userId)
-      if (!usuario) {
-        await trx.rollback()
-        return response.unauthorized({ success: false, message: 'Usuario inválido' })
-      }
-
-      // Perfiles permitidos
-      const perfilFuncionario = await Perfil.query()
-        .whereRaw('LOWER(perfil) = LOWER(?)', ['funcionario'])
-        .first()
-      const perfilAdministrador = await Perfil.query()
-        .whereRaw('LOWER(perfil) = LOWER(?)', ['administrador'])
-        .first()
-
-      if (!perfilFuncionario || !perfilAdministrador) {
-        await trx.rollback()
-        return response.status(500).json({
-          success: false,
-          message: 'Perfiles requeridos no configurados (Funcionario/Administrador)',
-        })
-      }
-
-      const esFuncionario = usuario.idperfil === perfilFuncionario.idperfil
-      const esAdministrador = usuario.idperfil === perfilAdministrador.idperfil
-
-      if (!esFuncionario && !esAdministrador) {
+      if (!actor.esDeCentro && !actor.esAdministrador) {
         await trx.rollback()
         return response.forbidden({
           success: false,
-          message: 'Solo administradores o funcionarios pueden importar aprendices',
+          message: 'Solo administradores, admin_sistema o funcionarios pueden importar aprendices',
         })
       }
 
-      // Determinar centro según el rol
+      // Centro: sesión para funcionario y admin_sistema. El Administrador de red sí elige.
       let centroFormacionId: number | null = null
-      if (esFuncionario) {
-        centroFormacionId = usuario.idcentro_formacion
+      if (actor.esDeCentro) {
+        centroFormacionId = actor.idcentro
         if (!centroFormacionId) {
           await trx.rollback()
           return response.badRequest({
             success: false,
-            message: 'El funcionario no tiene centro de formación asignado',
+            message: 'Tu usuario no tiene centro de formación asignado',
+          })
+        }
+        const bodyCentro = Number(request.input('centroFormacionId'))
+        if (bodyCentro && bodyCentro !== centroFormacionId) {
+          await trx.rollback()
+          return response.forbidden({
+            success: false,
+            message: 'No puedes importar aprendices en otro centro de formación',
           })
         }
       } else {

@@ -8,6 +8,8 @@ router.post('/api/usuarios/funcionarios', user.crearFuncionario)
 router.put('/api/usuarios/funcionarios/:id', user.actualizarFuncionario)
 router.get('/api/usuarios/funcionarios', user.listarFuncionarios)
 
+router.post('/api/usuarios/admin-sistema', user.crearAdminSistema)
+
 // Rutas generales de usuarios (manteniendo las existentes)
 router.post('/api/usuarios/crear', user.crear)
 router.post('/api/usuarios/login', user.login)

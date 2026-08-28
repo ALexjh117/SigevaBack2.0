@@ -7,6 +7,10 @@ import ProgramaFormacion from '#models/programa_formacion'
 import NivelFormacion from '#models/nivel_formacion'
 import db from '@adonisjs/lucid/services/db'
 import Perfil from '#models/perfil'
+import {
+  bloquearSiCentroAjeno,
+  resolverActor,
+} from '#services/actor_sesion'
 
 //contraseña
 import bcrypt from 'bcrypt'
@@ -37,6 +41,15 @@ export default class AprendizsController {
         'nivel_formacion',
         'centro_formacion_idcentro_formacion',
       ])
+
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, data.centro_formacion_idcentro_formacion, response)) {
+        await trx.rollback()
+        return
+      }
+      if (actor?.esDeCentro) {
+        data.centro_formacion_idcentro_formacion = actor.idcentro
+      }
 
       // Verificar si el email ya existe
       const emailExist = await Aprendiz.findBy('email', data.email)
@@ -135,12 +148,29 @@ export default class AprendizsController {
     }
   }
 
-  async traer({ response }: HttpContext) {
+  async traer({ request, response }: HttpContext) {
     try {
-      const aprendices = await Aprendiz.query()
-        .preload('centro_formacion', (cf) => cf.select(['centro_formacioncol']))
-        .preload('programa', (p) => p.select(['programa']))
-        .preload('grupo', (g) => g.select(['grupo']))
+      const actor = await resolverActor(request)
+      if (actor?.esDeCentro && !actor.idcentro) {
+        return response.status(400).json({
+          message: 'Tu usuario no tiene centro de formación asignado',
+        })
+      }
+
+      const query = Aprendiz.query()
+        .preload('centro_formacion', (cf) => {
+          cf.preload('regional')
+        })
+        .preload('programa', (p) => p.select(['idprograma_formacion', 'programa']))
+        .preload('grupo', (g) => g.select(['idgrupo', 'grupo', 'jornada']))
+
+      if (actor?.esDeCentro && actor.idcentro) {
+        query.where('centro_formacion_idcentro_formacion', actor.idcentro)
+      }
+
+      const aprendices = await query
+        .orderBy('centro_formacion_idcentro_formacion', 'asc')
+        .orderBy('apellidos', 'asc')
       return response.ok(aprendices)
     } catch (error) {
       return response.status(500).send({
@@ -157,6 +187,11 @@ export default class AprendizsController {
 
       if (!aprendiz) {
         return response.status(404).json({ message: 'Aprendiz no encontrado' })
+      }
+
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, aprendiz.centro_formacion_idcentro_formacion, response)) {
+        return
       }
 
       const data = request.only([
@@ -269,6 +304,9 @@ export default class AprendizsController {
   async aprendicesPorCentro({ params, request, response }: HttpContext) {
     try {
       const idCentro = Number(params.idCentro)
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, idCentro, response)) return
+
       const { page = 1, perPage = 20, estado, search } = request.qs()
 
       const query = Aprendiz.query()
@@ -303,12 +341,24 @@ export default class AprendizsController {
       })
     }
   }
-  async aprendicesAvaibleAll({ response }: HttpContext) {
+  async aprendicesAvaibleAll({ request, response }: HttpContext) {
     try {
-      const aprendices = await Aprendiz.query().whereRaw('LOWER(estado) IN (?, ?)', [
+      const actor = await resolverActor(request)
+      if (actor?.esDeCentro && !actor.idcentro) {
+        return response.status(400).json({
+          message: 'Tu usuario no tiene centro de formación asignado',
+        })
+      }
+
+      const query = Aprendiz.query().whereRaw('LOWER(estado) IN (?, ?)', [
         'en formacion',
         'activo',
       ])
+      if (actor?.esDeCentro && actor.idcentro) {
+        query.where('centro_formacion_idcentro_formacion', actor.idcentro)
+      }
+
+      const aprendices = await query
       return response.status(200).json({
         message: 'Éxito',
         data: aprendices,
@@ -317,9 +367,11 @@ export default class AprendizsController {
       return response.status(500).json({ message: 'Error', error: e.message })
     }
   }
-  async aprendicesAvailableByCentros({ params, response }: HttpContext) {
+  async aprendicesAvailableByCentros({ params, request, response }: HttpContext) {
     try {
       const { id } = params
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, id, response)) return
 
       const aprendices = await Aprendiz.query()
         .where('centro_formacion_idcentro_formacion', id)
@@ -335,9 +387,11 @@ export default class AprendizsController {
       })
     }
   }
-  async aprendicesInscritosByCentro({ params, response }: HttpContext) {
+  async aprendicesInscritosByCentro({ params, request, response }: HttpContext) {
     try {
       const { id } = params
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, id, response)) return
 
       const aprendices = await Aprendiz.query()
         .where('centro_formacion_idcentro_formacion', id)

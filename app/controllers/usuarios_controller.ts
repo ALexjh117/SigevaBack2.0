@@ -2,6 +2,16 @@ import { HttpContext } from '@adonisjs/core/http'
 import Usuario from '#models/usuario'
 import bcrypt from 'bcrypt'
 import Perfil from '#models/perfil'
+import {
+  PERFIL_ADMIN_SISTEMA,
+  buscarPerfilCanonico,
+  centroYaTieneAdminSistema,
+  esAdminSistema,
+  esPerfilCanonico,
+  perfilExigeCentro,
+  resolverActor,
+  bloquearRedFuncionarios,
+} from '#services/actor_sesion'
 
 export default class UsuariosController {
   async crear({ request, response }: HttpContext) {
@@ -11,6 +21,23 @@ export default class UsuariosController {
       const existe = await Usuario.findBy('email', email)
       if (existe) {
         return response.status(400).json({ message: 'El email ya está registrado' })
+      }
+
+      const perfilRow = idperfil ? await Perfil.find(idperfil) : null
+      if (!perfilRow || !esPerfilCanonico(perfilRow.perfil)) {
+        return response.status(400).json({
+          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario y Aprendiz',
+        })
+      }
+      if (perfilExigeCentro(perfilRow.perfil) && !idcentro_formacion) {
+        return response.status(400).json({
+          message: 'El admin_sistema y el funcionario deben tener un centro de formación',
+        })
+      }
+      if (esAdminSistema(perfilRow.perfil) && (await centroYaTieneAdminSistema(Number(idcentro_formacion)))) {
+        return response.status(409).json({
+          message: 'Este centro de formación ya tiene un admin_sistema',
+        })
       }
 
       const hashpassword = await bcrypt.hash(password, 10)
@@ -23,8 +50,8 @@ export default class UsuariosController {
         data: {
           email: usuario.email,
           estado: usuario.estado,
-          perfil: usuario.idperfil,
-          CentroFormacion: usuario.idcentro_formacion
+          perfil: perfilRow?.perfil ?? usuario.idperfil,
+          centroFormacion: usuario.idcentro_formacion,
         }
       })
     } catch (error) {
@@ -51,6 +78,14 @@ export default class UsuariosController {
       }
 
       const perfil = await Perfil.findBy('idperfil', usuario.idperfil)
+      const nombrePerfil = perfil?.perfil
+
+      if (perfilExigeCentro(nombrePerfil) && !usuario.idcentro_formacion) {
+        return response.status(400).json({
+          success: false,
+          message: 'Tu usuario no tiene centro de formación asignado',
+        })
+      }
 
       return response.status(200).json({
         success: true,
@@ -58,8 +93,10 @@ export default class UsuariosController {
         data: {
           id: usuario.idusuarios,
           email: usuario.email,
+          nombres: usuario.nombres,
+          apellidos: usuario.apellidos,
           estado: usuario.estado,
-          perfil: perfil?.perfil,
+          perfil: nombrePerfil,
           centroFormacion: usuario.idcentro_formacion,
         }
       })
@@ -94,6 +131,29 @@ export default class UsuariosController {
       if (idperfil) usuario.idperfil = idperfil
       if (idcentro_formacion) usuario.idcentro_formacion = idcentro_formacion
 
+      const perfilFinal = await Perfil.find(usuario.idperfil)
+      if (!perfilFinal || !esPerfilCanonico(perfilFinal.perfil)) {
+        return response.status(400).json({
+          success: false,
+          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario y Aprendiz',
+        })
+      }
+      if (perfilExigeCentro(perfilFinal.perfil) && !usuario.idcentro_formacion) {
+        return response.status(400).json({
+          success: false,
+          message: 'El admin_sistema y el funcionario deben tener un centro de formación',
+        })
+      }
+      if (
+        esAdminSistema(perfilFinal.perfil) &&
+        (await centroYaTieneAdminSistema(Number(usuario.idcentro_formacion), usuario.idusuarios))
+      ) {
+        return response.status(409).json({
+          success: false,
+          message: 'Este centro de formación ya tiene un admin_sistema',
+        })
+      }
+
       await usuario.save()
 
       return response.status(200).json({
@@ -103,8 +163,8 @@ export default class UsuariosController {
           id: usuario.idusuarios,
           email: usuario.email,
           estado: usuario.estado,
-          perfil: usuario.idperfil,
-          CentroFormacion: usuario.idcentro_formacion
+          perfil: perfilFinal?.perfil ?? usuario.idperfil,
+          centroFormacion: usuario.idcentro_formacion,
         }
       })
     } catch (error) {
@@ -238,8 +298,96 @@ export default class UsuariosController {
     }
   }
 
-  async listarFuncionarios({ response }: HttpContext) {
+  async crearAdminSistema({ request, response }: HttpContext) {
     try {
+      const { nombres, apellidos, celular, tipo_documento, numero_documento, email, password, idcentro_formacion } = request.only([
+        'nombres',
+        'apellidos',
+        'celular',
+        'tipo_documento',
+        'numero_documento',
+        'email',
+        'password',
+        'idcentro_formacion',
+      ])
+
+      if (!email || !password || !nombres || !apellidos || !celular || !tipo_documento || !numero_documento) {
+        return response.status(400).json({
+          error: 'Faltan campos requeridos',
+          required: ['nombres', 'apellidos', 'celular', 'tipo_documento', 'numero_documento', 'email', 'password', 'idcentro_formacion'],
+        })
+      }
+
+      if (!idcentro_formacion) {
+        return response.status(400).json({
+          message: 'El admin_sistema debe tener un centro de formación',
+        })
+      }
+
+      const perfilAdminSistema = await buscarPerfilCanonico(PERFIL_ADMIN_SISTEMA)
+      if (!perfilAdminSistema) {
+        return response.status(400).json({
+          error: 'Perfil admin_sistema no configurado. Corre database/sql/perfil_admin_sistema.sql',
+        })
+      }
+
+      if (await centroYaTieneAdminSistema(Number(idcentro_formacion))) {
+        return response.status(409).json({
+          message: 'Este centro de formación ya tiene un admin_sistema',
+        })
+      }
+
+      const existe = await Usuario.findBy('email', email)
+      if (existe) {
+        return response.status(400).json({
+          error: 'El correo electrónico ya está registrado',
+        })
+      }
+
+      const adminCentro = await Usuario.create({
+        nombres,
+        apellidos,
+        celular,
+        tipo_documento,
+        numero_documento,
+        email,
+        password: await bcrypt.hash(password, 10),
+        estado: 'Activo',
+        idperfil: perfilAdminSistema.idperfil,
+        idcentro_formacion,
+      })
+
+      return response.status(201).json({
+        success: true,
+        message: 'admin_sistema creado exitosamente',
+        data: {
+          id: adminCentro.idusuarios,
+          email: adminCentro.email,
+          estado: adminCentro.estado,
+          idcentro_formacion: adminCentro.idcentro_formacion,
+          centroFormacion: adminCentro.idcentro_formacion,
+          perfil: PERFIL_ADMIN_SISTEMA,
+        },
+      })
+    } catch (error) {
+      if (error.code === '23505') {
+        return response.status(409).json({
+          message: 'Este centro de formación ya tiene un admin_sistema',
+        })
+      }
+      console.error('Error en crearAdminSistema:', error)
+      return response.status(500).json({
+        error: 'Error al crear admin_sistema',
+        details: error.message,
+      })
+    }
+  }
+
+  async listarFuncionarios({ request, response }: HttpContext) {
+    try {
+      const actor = await resolverActor(request)
+      if (bloquearRedFuncionarios(actor, response)) return
+
       const funcionarios = await Usuario.query()
         .preload('perfil')
         .whereHas('perfil', (query) => {

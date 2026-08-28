@@ -2,10 +2,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { HttpContext } from '@adonisjs/core/http'
 import Eleccione from '#models/eleccione'
+import { bloquearTableroRed, resolverActor } from '#services/actor_sesion'
 
 export default class ReportesController {
   async filtrar({ request, response }: HttpContext) {
   try {
+    const actor = await resolverActor(request)
+    if (bloquearTableroRed(actor, response)) return
+
     const { idCentro_formacion, anio, idregional, ideleccion } = request.only([
       'idCentro_formacion',
       'anio',

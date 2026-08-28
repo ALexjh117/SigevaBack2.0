@@ -29,7 +29,7 @@ export default class Usuario extends BaseModel {
   @column()
   declare email: string
 
-  @column()
+  @column({ serializeAs: null })
   declare password: string
 
   @column()
