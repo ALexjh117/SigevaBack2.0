@@ -238,30 +238,12 @@ export default class AprendizsController {
     }
   }
 
-  async actualizarContrasena({ request, response }: HttpContext) {
-    try {
-      const { email, password } = request.only(['email', 'password'])
-
-      if (!password || !email) {
-        return response.status(400).json({ message: 'Debes enviar la nueva contraseña' })
-      }
-
-      const aprendiz = await Aprendiz.findBy('email', email)
-
-      if (!aprendiz) {
-        return response.status(404).json({ message: 'Aprendiz no encontrado' })
-      }
-
-      // Hashear la nueva contraseña
-      aprendiz.password = await bcrypt.hash(password, 10)
-      await aprendiz.save()
-
-      return response.ok({ message: 'Contraseña actualizada con éxito' })
-    } catch (error) {
-      return response
-        .status(500)
-        .json({ message: 'Error al actualizar la contraseña', error: error.message })
-    }
+  async actualizarContrasena({ response }: HttpContext) {
+    return response.status(410).json({
+      success: false,
+      message:
+        'Este endpoint ya no está disponible. Usa POST /api/recuperar-password/solicitar y POST /api/recuperar-password/confirmar',
+    })
   }
 
   async login({ request, response }: HttpContext) {

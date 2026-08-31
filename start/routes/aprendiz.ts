@@ -13,15 +13,14 @@ router
     // start/routes.ts
     router.get('/centros/:idCentro/', aprendizsController.aprendicesPorCentro)
 
-    // Actualizar aprendiz por id
-    router.put('/actualizar/:id', aprendizsController.actualizar)
-
     // Login
     router.post('/login', aprendizsController.login)
 
-    // Actualizar contraseña por correo
-
+    // Debe ir ANTES de /actualizar/:id o "contrasena" se interpreta como id
     router.put('/actualizar/contrasena', aprendizsController.actualizarContrasena)
+
+    // Actualizar aprendiz por id
+    router.put('/actualizar/:id', aprendizsController.actualizar)
 
     // Disponibles totales y por centros
 

@@ -11,6 +11,11 @@ import bcrypt from 'bcrypt'
 import XLSX from 'xlsx'
 
 import { resolverActor } from '#services/actor_sesion'
+import {
+  normalizarDocumento,
+  normalizarEmail,
+  parseFichaCaracterizacion,
+} from '#services/import_ficha'
 
 export default class ImportExcelController {
   public async importarAprendices({ request, response }: HttpContext) {
@@ -88,7 +93,6 @@ export default class ImportExcelController {
 
       // 2) Archivo y params
       const file = request.file('excel')
-      const { jornada } = request.only(['jornada'])
 
       if (!file) {
         await trx.rollback()
@@ -98,30 +102,22 @@ export default class ImportExcelController {
         })
       }
 
-      // 3) Leer Excel
+      // 3) Leer Excel — reporte Sofia Plus: C2 = "ficha - programa", filas desde la 5
       const workbook = XLSX.read(file.tmpPath, { type: 'file' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
 
-      const fichaCelda = sheet['C2']?.v?.toString().trim() || ''
-      const fichaLimpia = fichaCelda.replace(/–/g, '-')
-      const partes = fichaLimpia.split(' - ')
-      const numeroGrupo = partes[0]?.trim() || ''
-      const nombrePrograma = partes[1]?.trim() || ''
+      const { numeroGrupo, nombrePrograma } = parseFichaCaracterizacion(sheet['C2']?.v)
 
       if (!numeroGrupo || !nombrePrograma) {
         await trx.rollback()
         return response.status(400).json({
           success: false,
-          message: 'No se encontró la ficha de caracterización o el programa en el Excel',
+          message:
+            'No se encontró la ficha de caracterización o el programa en C2. Usa el Reporte de Aprendices de Sofia Plus sin cambiar el formato.',
         })
       }
 
       const data: any[] = XLSX.utils.sheet_to_json(sheet, { range: 4, defval: '' })
-
-      const normalizeDoc = (d: any) =>
-        d === null || d === undefined ? '' : String(d).trim().replace(/\s+/g, '')
-      const normalizeEmail = (e: any) =>
-        e === null || e === undefined ? '' : String(e).trim().toLowerCase()
 
       // Recolectar documentos y correos
       const docsSet = new Set<string>()
@@ -129,8 +125,8 @@ export default class ImportExcelController {
       const filasProcesables: any[] = []
 
       for (const fila of data) {
-        const numeroDocumento = normalizeDoc(fila['Número de Documento'])
-        const email = normalizeEmail(fila['Correo Electrónico'])
+        const numeroDocumento = normalizarDocumento(fila['Número de Documento'])
+        const email = normalizarEmail(fila['Correo Electrónico'])
 
         if (!numeroDocumento && !email) continue
 
@@ -152,11 +148,17 @@ export default class ImportExcelController {
         })
       }
 
-      // Perfil y nivel
-      const perfil = await Perfil.query().whereRaw('LOWER(perfil) = LOWER(?)', ['aprendiz']).first()
-      if (!perfil) throw new Error('El perfil "Aprendiz" no existe.')
+      // Perfil canónico. No se crea un quinto rol ni se duplica Aprendiz.
+      const perfil = await Perfil.query({ client: trx }).where('perfil', 'Aprendiz').first()
+      if (!perfil) {
+        await trx.rollback()
+        return response.status(500).json({
+          success: false,
+          message: 'El perfil "Aprendiz" no existe. Créalo en la tabla perfil antes de importar.',
+        })
+      }
 
-      let nivel = await NivelFormacion.query().where('nivel_formacion', 'Técnico').first()
+      let nivel = await NivelFormacion.query({ client: trx }).where('nivel_formacion', 'Técnico').first()
       if (!nivel) {
         nivel = new NivelFormacion()
         nivel.nivel_formacion = 'Técnico'
@@ -165,17 +167,19 @@ export default class ImportExcelController {
 
       const AREA_SOFTWARE_ID = 1
 
-      // Grupo
-      let grupo = await Grupo.query().where('grupo', numeroGrupo).first()
+      let grupo = await Grupo.query({ client: trx }).where('grupo', numeroGrupo).first()
       if (!grupo) {
         grupo = new Grupo()
         grupo.grupo = numeroGrupo
-        grupo.jornada = jornada
+        grupo.jornada = ''
         await grupo.useTransaction(trx).save()
       }
 
-      // Programa
-      let programa = await ProgramaFormacion.query().where('programa', nombrePrograma).first()
+      let programa = await ProgramaFormacion.query({ client: trx })
+        .whereRaw("LOWER(REGEXP_REPLACE(TRIM(programa), '\\.+$', '')) = ?", [
+          nombrePrograma.toLowerCase(),
+        ])
+        .first()
       if (!programa) {
         programa = new ProgramaFormacion()
         Object.assign(programa, {
@@ -185,15 +189,6 @@ export default class ImportExcelController {
           codigo_programa: 'N/A',
           version: '1.0',
           duracion: 0,
-        })
-        await programa.useTransaction(trx).save()
-      } else {
-        programa.merge({
-          idnivel_formacion: programa.idnivel_formacion || nivel.idnivel_formacion,
-          idarea_tematica: programa.idarea_tematica || AREA_SOFTWARE_ID,
-          codigo_programa: programa.codigo_programa || 'N/A',
-          version: programa.version || '1.0',
-          duracion: programa.duracion || 0,
         })
         await programa.useTransaction(trx).save()
       }
@@ -240,8 +235,29 @@ export default class ImportExcelController {
         const tipoDocumento = fila['Tipo de Documento'] || ''
         const nombres = fila['Nombre'] || ''
         const apellidos = fila['Apellidos'] || ''
-        const celular = fila['Celular'] || ''
+        const celular = String(fila['Celular'] ?? '')
         const estado = fila['Estado'] || 'activo'
+
+        if (!numeroDocumento) {
+          skipped++
+          const motivo = 'Sin número de documento (la contraseña inicial es el documento)'
+          skippedAprendices.push({
+            'Número de Documento': '',
+            'Correo Electrónico': email || '',
+            'Nombre': nombres,
+            'Apellidos': apellidos,
+            motivo,
+          })
+          processed.push({
+            'Número de Documento': '',
+            'Correo Electrónico': email || '',
+            'Nombre': nombres,
+            'Apellidos': apellidos,
+            status: 'skipped',
+            motivo,
+          })
+          continue
+        }
 
         // Buscar existente en la base
         const existe = await Aprendiz.query()
@@ -300,10 +316,8 @@ export default class ImportExcelController {
             })
           }
         } else {
-          // Insertar nuevo
-          const passwordTemporal =
-            numeroDocumento || email || Math.random().toString(36).slice(2, 10)
-          const hashedPassword = await bcrypt.hash(passwordTemporal, 10)
+          // Clave inicial = número de documento. Si se olvida, recuperar-password.
+          const hashedPassword = await bcrypt.hash(numeroDocumento, 10)
           const aprendizNuevo: any = {
             idgrupo: grupo.idgrupo,
             idprograma_formacion: programa.idprograma_formacion,
@@ -340,8 +354,10 @@ export default class ImportExcelController {
         inserted,
         updated,
         skipped,
+        ficha: numeroGrupo,
+        programa: nombrePrograma,
+        centroFormacionId,
         skippedAprendices,
-        // Nuevo: resultados por fila para trazabilidad en frontend
         processed,
       })
     } catch (error: any) {

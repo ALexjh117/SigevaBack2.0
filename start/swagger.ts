@@ -69,6 +69,10 @@ const swaggerDefinition = {
       description: "Sistema OTP para validación de votos"
     },
     {
+      name: "Recuperación de contraseña",
+      description: "Código OTP al correo para cambiar la clave (todos los roles)"
+    },
+    {
       name: "Votos por Candidato",
       description: "Gestión de votos y resultados"
     },
@@ -847,6 +851,102 @@ const swaggerDefinition = {
         responses: {
           "200": { description: "Login exitoso" },
           "401": { description: "Credenciales inválidas" }
+        }
+      }
+    },
+    "/api/recuperar-password/solicitar": {
+      post: {
+        summary: "Solicitar código para recuperar contraseña",
+        tags: ["Recuperación de contraseña"],
+        description:
+          "Busca el correo en usuarios (Administrador, admin_sistema, Funcionario) y en aprendiz. Genera un OTP de 6 caracteres, lo envía por email y caduca en OTP_EXPIRATION_MINUTES (default 5). En desarrollo la respuesta incluye codigo_otp_temporal.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: {
+                  email: { type: "string", format: "email", example: "juan.perez@sena.edu.co" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": {
+            description: "Código generado y correo enviado",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Código enviado al correo" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        otp_generado: { type: "boolean", example: true },
+                        email_enviado_a: { type: "string", example: "juan.perez@sena.edu.co" },
+                        email_enviado: { type: "boolean", example: true },
+                        expira_en_minutos: { type: "integer", example: 5 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { description: "No hay una cuenta con ese correo" }
+        }
+      }
+    },
+    "/api/recuperar-password/confirmar": {
+      post: {
+        summary: "Confirmar código y guardar nueva contraseña",
+        tags: ["Recuperación de contraseña"],
+        description:
+          "Valida el OTP (mismo correo + código, no expirado) y actualiza el password con bcrypt en usuarios o aprendiz. data.perfil y data.login indican a qué login redirigir.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "codigo", "nueva_password"],
+                properties: {
+                  email: { type: "string", format: "email", example: "juan.perez@sena.edu.co" },
+                  codigo: { type: "string", minLength: 6, maxLength: 6, example: "ABC123" },
+                  nueva_password: { type: "string", minLength: 8, example: "NuevaClave2026" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": {
+            description: "Contraseña actualizada",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Contraseña actualizada con éxito" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        perfil: { type: "string", example: "Funcionario" },
+                        login: { type: "string", example: "/api/usuarios/login" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { description: "Código inválido, expirado o contraseña menor a 8 caracteres" }
         }
       }
     },
