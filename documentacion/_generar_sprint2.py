@@ -127,10 +127,11 @@ SPRINT = {
     "kickoff": "lunes 31 ago 2026",
     "review": "viernes 4 sep 2026",
     "meta": (
-        "Dejar el producto presentable y gobernable por centro: landing con 3 prototipos a elegir, "
-        "listados de elección con lo más reciente arriba, padrón de aprendices filtrable, "
-        "una sola elección por centro el mismo día, el rol admin_sistema aislado a su sede, "
-        "y al crear una elección como funcionario un SweetAlert en vez del alert nativo."
+        "Cerrar lo que ya se construyó y dejar documentado lo que faltaba: landing (Sofia), "
+        "recuperar contraseña (Alex back + Maicol front), import Excel Sofia Plus sin jornada (Alex), "
+        "prototipos de informe por jornada (Mebel) y de urna móvil (Paula), "
+        "ojo y mensaje de credenciales en login (Maicol), criterios de una elección por día (Adrii), "
+        "y Lucero escribe las HU que no estaban en el Excel de historias."
     ),
 }
 
@@ -141,34 +142,32 @@ HISTORIAS = [
         "cu": "CU-26",
         "sp": 5,
         "prio": "Debe tener",
-        "persona": "Paula",
-        "capa": "UX / Front",
-        "rama": "sigevaFront · feat/landing-prototipos",
-        "titulo": "Tres prototipos nuevos de landing page",
+        "persona": "Sofia",
+        "capa": "Front landing",
+        "rama": "sigevaFront · feat/landing",
+        "titulo": "Landing page SIGEVA (producción)",
         "historia": (
             "Como visitante del SENA, quiero una landing clara y de confianza "
             "para entrar a votar o a gestionar, para no aterrizar en una pantalla que parece un contrato interno."
         ),
-        "problema": "La landing actual se ve horrible: no parece un producto electoral institucional.",
-        "valor": "El review del viernes elige UNA dirección. Sprint 3 implementa. Sin esto, SIGEVA no se puede mostrar.",
+        "problema": "La home pública tiene que verse institucional: dos puertas (urna y gestión), identidad SENA, bien en escritorio y en celular.",
+        "valor": "SIGEVA se puede mostrar. Es la puerta de todo el mundo que no está logueado.",
         "in_scope": [
-            "Tres prototipos distintos (A institucional SENA, B urna/confianza, C centro de formación)",
-            "Cada uno en escritorio 1440 px y móvil 375 px",
-            "Dos puertas: Aprendiz (urna) y Gestión (funcionario / admin_sistema / administrador)",
-            "Paleta e identidad SENA (verde 92D050, navy). Tipografía legible. CTA visibles",
-            "Estados: visitante no logueado. No se pide voto en la landing",
-            "Presentación de 10 min el viernes con recomendación de cuál llevar a código",
+            "Página Inicio de sigevaFront (ruta /). Desktop 1440 y móvil 375",
+            "Dos CTA: Aprendiz (urna /login-aprendiz) y Gestión (/login)",
+            "Paleta SENA (verde #39A900 / #92D050, navy). CTA visibles. Sin voto en la landing",
+            "Enlace a Equipo si ya está (Paula lo prototipó). Sofia no reescribe Equipo.tsx",
         ],
         "out_scope": [
-            "Implementar la ganadora en producción (eso es Sprint 3)",
-            "Rediseñar urna, OTP, acta o formularios de elección",
-            "Copiar el HomePage de sigeva-front (ese React es contrato de agente, no la web pública)",
+            "Urna, OTP, acta, form de elección, import Excel, recuperar contraseña",
+            "Copiar el HomePage de sigeva-front/ (contrato de agente, no la web pública)",
+            "Prototipos de urna móvil (eso es Paula HU-S2-033)",
         ],
         "listo": (
-            "Hay 3 archivos o links (Figma / HTML) con desktop + móvil. El equipo marca uno como ganador en el review. "
-            "Nadie mergea CSS a develop este sprint."
+            "Network: / abre la landing. Los dos botones llegan a /login-aprendiz y /login. "
+            "Se ve bien a 1440 y 375. No pide jornada ni documento en esa pantalla."
         ),
-        "archivos": "prototipos en entregables/sprint-2/landing/ o Figma. No toca app/ ni urna.",
+        "archivos": "sigevaFront/src/pages/Inicio.tsx · Inicio.css · App.tsx ruta /. No toca RecuperarContrasena ni urna.",
     },
     {
         "id": "HU-S2-027",
@@ -349,13 +348,276 @@ HISTORIAS = [
         ),
         "archivos": "sigevaFront · form crear elección (éxito/error del submit) · npm i sweetalert2 si no está. No toca eleccion_controller.ts.",
     },
+    {
+        "id": "HU-S2-032",
+        "rf": "RF-NU-032",
+        "cu": "CU-32",
+        "sp": 5,
+        "prio": "Debe tener",
+        "persona": "Mebel",
+        "capa": "UX prototipo",
+        "rama": "Figma / entregables/sprint-2/informe-jornada/",
+        "titulo": "Prototipo: informe de candidatos por jornada (quién va ganando)",
+        "historia": (
+            "Como funcionario, quiero ver un informe de candidatos partido por jornada "
+            "(Mañana, Tarde, Noche) y quién va ganando en cada franja, para no mezclar las tres urnas en un solo total."
+        ),
+        "problema": "HU-018 es el acta global de la elección. No hay pantalla ni prototipo que corte votos por jornada del candidato. El daily pide ver 'quién va ganando' por franja.",
+        "valor": "El review ve el diseño. Lucero escribe la HU-019 en el Excel de historias. El código del informe NO entra este sprint.",
+        "in_scope": [
+            "Prototipo escritorio + móvil: 3 bloques Mañana / Tarde / Noche",
+            "En cada bloque: candidatos con votos, ceros incluidos, quién va primero o empate",
+            "Grafía exacta: Mañana | Tarde | Noche (con ñ)",
+            "Una elección del centro, no tres elecciones. El corte es de candidatos.jornada",
+            "El aprendiz NO ve este informe (sigue HU-007)",
+        ],
+        "out_scope": [
+            "Implementar API ni PDF este sprint (eso es HU-019, Lucero la escribe, código después)",
+            "Cambiar el acta HU-018 (sigue existiendo el total de la elección)",
+            "Landing, urna, OTP, import Excel, SweetAlert de crear elección (HU-S2-031 ya es suya si no cerró)",
+        ],
+        "listo": (
+            "Hay Figma o HTML con las 3 jornadas y un ganador/empate por franja. El equipo lo ve el viernes. "
+            "Cero PR de backend de totales."
+        ),
+        "archivos": "entregables/sprint-2/informe-jornada/ o Figma. No toca generacion_reporte_controller.ts.",
+    },
+    {
+        "id": "HU-S2-033",
+        "rf": "RF-NU-033",
+        "cu": "CU-33",
+        "sp": 5,
+        "prio": "Debe tener",
+        "persona": "Paula",
+        "capa": "UX móvil",
+        "rama": "Figma · urna aprendiz 375 px",
+        "titulo": "Prototipos móvil del aprendiz (misma urna web, adaptada al celular)",
+        "historia": (
+            "Como aprendiz, quiero usar la urna en el celular igual que en la web "
+            "(login, elegir jornada, votaciones, tarjetón, OTP, confirmar, comprobante) para votar desde el teléfono."
+        ),
+        "problema": "Las pantallas de urna están pensadas en escritorio. En 375 px se cortan o no se recorren.",
+        "valor": "El SENA vota con el celular. Paula prototipa; no reescribe la urna en código este sprint.",
+        "in_scope": [
+            "Flujos de aprendiz a 375 px: login-aprendiz, recuperar contraseña, elegir jornada, votaciones, tarjetón, OTP, confirmar voto, comprobante",
+            "Mismos campos y mismas URLs que la web. No inventar un app nativa",
+            "Jornada: Mañana | Tarde | Noche. No picker inventado en el primer login distinto al de web",
+        ],
+        "out_scope": [
+            "Código a develop de urna (Sofia ya tiene tarjetón web). Paula entrega prototipo",
+            "Pantallas de funcionario / admin",
+            "Landing (Sofia). Equipo.tsx ya lo hizo ella: no lo reabre salvo un ajuste móvil chico",
+        ],
+        "listo": "Figma o HTML recorrible: de login aprendiz hasta comprobante, en 375 px, mismos pasos que la web.",
+        "archivos": "entregables/sprint-2/movil-aprendiz/ o Figma. No toca sigevaFront/src/pages/aprendiz salvo captura de referencia.",
+    },
+    {
+        "id": "HU-S2-034",
+        "rf": "RF-NU-034",
+        "cu": "CU-34",
+        "sp": 5,
+        "prio": "Debe tener",
+        "persona": "Maicol",
+        "capa": "Front",
+        "rama": "sigevaFront · feat/recuperar-password",
+        "titulo": "Recuperar contraseña en el frontend (conectar el API)",
+        "historia": (
+            "Como aprendiz o gestor, quiero recuperar mi clave con el correo y un código de 6 caracteres "
+            "para entrar de nuevo sin pedirle a Bienestar que me la cambie a mano."
+        ),
+        "problema": "RecuperarContrasena.tsx pide documento y llama rutas que el back no tiene. El back de Alex ya está: solicitar + confirmar.",
+        "valor": "Los 4 roles usan un solo flujo. El paquete para copiar JSON está en para-companero/recuperar-password/.",
+        "in_scope": [
+            "Reescribir src/pages/RecuperarContrasena.tsx: 3 pasos (correo → código+clave → listo)",
+            "POST /api/recuperar-password/solicitar { email } y POST .../confirmar { email, codigo, nueva_password }",
+            "Código 6, clave mín 8, repetir clave solo en el form. Pintar message del back. Sin toast de éxito si falló",
+            "Redirect: Aprendiz → /login-aprendiz. Staff → /login. Sin login automático",
+            "Mantener Login.css y la ruta /recuperar-contrasena. No tocar App.tsx",
+        ],
+        "out_scope": [
+            "Backend (Alex HU-S2-036). No crear otras URLs",
+            "PUT /api/aprendiz/actualizar/contrasena (410)",
+            "Landing, urna, elección, import",
+        ],
+        "listo": (
+            "Network solicitar = { email } 200. Network confirmar = { email, codigo, nueva_password } 200. "
+            "Ya no se pide documento. Login con la clave nueva funciona."
+        ),
+        "archivos": "sigevaFront/src/pages/RecuperarContrasena.tsx · contrato en para-companero/recuperar-password/README.md",
+    },
+    {
+        "id": "HU-S2-035",
+        "rf": "RF-NU-035",
+        "cu": "CU-35",
+        "sp": 2,
+        "prio": "Debe tener",
+        "persona": "Maicol",
+        "capa": "Front login",
+        "rama": "sigevaFront · feat/login-ojo-credenciales",
+        "titulo": "Ojo para ver la clave y aviso si las credenciales no sirven",
+        "historia": (
+            "Como usuario en el login, quiero ver u ocultar lo que escribí en la contraseña "
+            "y que me digan claro si el correo o la clave no coinciden, para no adivinar si me equivoqué."
+        ),
+        "problema": "El input es type=password sin ojo. El catch del login tira un toast genérico y a veces ignora el message del back.",
+        "valor": "Menos tickets de 'no puedo entrar'. Misma pantalla de Login.tsx (gestión y aprendiz).",
+        "in_scope": [
+            "Botón de ojo (mostrar/ocultar) en login gestión y login aprendiz",
+            "Pintar error.response.data.message cuando el login falle (401 / success false)",
+            "Si las credenciales están bien, el flujo actual (navigate) no cambia",
+        ],
+        "out_scope": [
+            "Recuperar contraseña (HU-S2-034). JWT. Cambiar endpoints de login",
+            "Landing. Form de elección",
+        ],
+        "listo": "En /login y /login-aprendiz hay ojo. Clave mala = mensaje del API en pantalla, no un éxito falso.",
+        "archivos": "sigevaFront/src/pages/Login.tsx · Login.css",
+    },
+    {
+        "id": "HU-S2-036",
+        "rf": "RF-NU-036",
+        "cu": "CU-36",
+        "sp": 5,
+        "prio": "Debe tener",
+        "persona": "Alex",
+        "capa": "Back",
+        "rama": "sigevaBack · feat/recuperar-password",
+        "titulo": "Recuperar contraseña en el backend (OTP al correo, 4 roles)",
+        "historia": (
+            "Como cualquier rol con correo en SIGEVA, quiero pedir un código y dejar una clave nueva "
+            "para recuperar el acceso sin un endpoint abierto de cambio de contraseña."
+        ),
+        "problema": "No había HU. El PUT /api/aprendiz/actualizar/contrasena era un hueco. El front pedía documento.",
+        "valor": "Un solo par de endpoints. Tabla recuperacion_password. Caduca 5 min. bcrypt.",
+        "in_scope": [
+            "POST /api/recuperar-password/solicitar y POST /api/recuperar-password/confirmar",
+            "Busca en usuarios y luego aprendiz. Código nanoid 6. Mail mismo SMTP que el OTP de voto",
+            "410 en PUT /api/aprendiz/actualizar/contrasena",
+            "Paquete para-companero/recuperar-password/ para Maicol",
+        ],
+        "out_scope": [
+            "Front (Maicol HU-S2-034). JWT. Segunda cuenta de Gmail. OTP de votación",
+        ],
+        "listo": "Thunder solicitar 200 + mail. Confirmar 200 + login con la clave nueva. Correo inexistente 404. Código mal 400 OTP_INVALIDO.",
+        "archivos": "app/controllers/recuperacion_password_controller.ts · start/routes/recuperar_password.ts · para-companero/recuperar-password/",
+    },
+    {
+        "id": "HU-S2-037",
+        "rf": "RF-NU-037",
+        "cu": "CU-37",
+        "sp": 8,
+        "prio": "Debe tener",
+        "persona": "Alex",
+        "capa": "Back + Front",
+        "rama": "sigevaBack + sigevaFront · import ficha",
+        "titulo": "Cargar aprendices desde el Excel de Sofia Plus (mesa y red)",
+        "historia": (
+            "Como funcionario o administrador, quiero subir el Reporte de Aprendices de Sofia Plus "
+            "para armar el padrón sin inventar otra plantilla y sin elegir jornada en la carga."
+        ),
+        "problema": "HU-012/024 existían en papel; el código no leía el xls real (C2 = ficha - programa). Pedían jornada en el form y eso saltaba el picker del aprendiz.",
+        "valor": "Padrón real. Clave inicial = número de documento. Jornada la elige el aprendiz al entrar.",
+        "in_scope": [
+            "POST /api/aprendices/importarExcel. Parser C2 y filas desde 5. Todos los estados de Sofia Plus",
+            "Password solo en insert = bcrypt(documento). No duplicar programa ni perfil Aprendiz",
+            "Funcionario/admin_sistema: centro = sesión. Administrador: centroFormacionId obligatorio",
+            "Front: /cargar-aprendices y /cargar-aprendices-admin. Sin combo de jornada. KPIs + SweetAlert de resultado",
+        ],
+        "out_scope": [
+            "Acta. Recuperar clave (otra HU). Picker de jornada en el import",
+        ],
+        "listo": "Network del POST con el xls de ficha. Insertados/actualizados/omitidos. Reimport no duplica programa. Login con documento como clave. Grupo nuevo con jornada vacía.",
+        "archivos": "app/services/import_ficha.ts · ImportController.ts · sigevaFront CargarAprendices.tsx y CargarAprendicesAdmin.tsx",
+    },
+    {
+        "id": "HU-S2-038",
+        "rf": "RF-NU-038",
+        "cu": "CU-38",
+        "sp": 3,
+        "prio": "Debe tener",
+        "persona": "Alex",
+        "capa": "Back + Front",
+        "rama": "ya en develop / ramas de import y elección",
+        "titulo": "Quitar jornada de la elección y de la carga; el aprendiz la elige al entrar",
+        "historia": (
+            "Como mesa, quiero una sola elección por centro (sin jornada en la convocatoria) "
+            "para que el aprendiz elija Mañana/Tarde/Noche cuando entra y la urna recorte candidatos con ?jornada=."
+        ),
+        "problema": "Si el import o el crear elección estampan jornada en el grupo, el login salta /elegir-jornada y la urna se descuadra.",
+        "valor": "Cierra el paquete del 26-27 ago: jornada vive en el candidato y en la sesión del aprendiz, no en la elección.",
+        "in_scope": [
+            "POST/PUT elección sin jornada. Import no manda jornada. Grupo nuevo jornada = ''",
+            "Login aprendiz: jornada vacía → /elegir-jornada. Urna ?jornada= de la sesión",
+        ],
+        "out_scope": [
+            "Acta por jornada (eso es el prototipo de Mebel / HU-019 de Lucero)",
+            "Form de candidato (Sofia sprint anterior, no reabrir)",
+        ],
+        "listo": "Crear elección 201 con jornada null. Import sin campo jornada. Aprendiz nuevo cae en elegir-jornada.",
+        "archivos": "eleccion_controller · import_ficha.ts · CargarAprendices*.tsx · Login.tsx / ElegirJornadaPage.tsx",
+    },
+    {
+        "id": "HU-S2-039",
+        "rf": "RF-NU-039",
+        "cu": "CU-39",
+        "sp": 2,
+        "prio": "Debería tener",
+        "persona": "Paula",
+        "capa": "Front",
+        "rama": "sigevaFront · /equipo",
+        "titulo": "Prototipo / página Equipo de desarrollo",
+        "historia": (
+            "Como visitante, quiero ver quién hizo SIGEVA "
+            "para dar crédito al equipo de la Fábrica."
+        ),
+        "problema": "No había HU. Paula ya prototipó e implementó /equipo.",
+        "valor": "La landing puede enlazar a personas reales. Lucero no inventa otra página: documenta esta.",
+        "in_scope": [
+            "Ruta /equipo. Layout de Login.css / Equipo.css. Fotos y roles del equipo",
+        ],
+        "out_scope": ["Urna", "Gestión", "Landing (Sofia solo enlaza)"],
+        "listo": "GET /equipo pinta el equipo. Link desde la landing o el footer.",
+        "archivos": "sigevaFront/src/pages/Equipo.tsx · App.tsx ruta /equipo",
+    },
+    {
+        "id": "HU-S2-040",
+        "rf": "RF-NU-040",
+        "cu": "CU-40",
+        "sp": 5,
+        "prio": "Debe tener",
+        "persona": "Lucero",
+        "capa": "Documentación HU",
+        "rama": "sigevaBack · documentacion + entregables/sprint-1",
+        "titulo": "Escribir en el Excel de historias lo que ya se construyó y no estaba",
+        "historia": (
+            "Como analista, quiero que recuperar contraseña e informe por jornada "
+            "queden como historias de usuario en el mismo Excel del Sprint 1, para que el cliente no vea huecos."
+        ),
+        "problema": "EP-SIG-001 dice 'fuera: recuperar contraseña'. HU-019 no existe. HU-013 todavía habla de jornada en la elección. HU-012 dice que el código pide jornada.",
+        "valor": "El backlog coincide con el producto. Alex no reescribe las 22 HU a mano: Lucero las mete donde toca.",
+        "in_scope": [
+            "NUEVA HU-008 Recuperar contraseña (4 roles) — ver hoja 10-LUCERO, bloque A",
+            "NUEVA HU-019 Informe de candidatos por jornada — hoja 10-LUCERO, bloque B",
+            "ACTUALIZAR HU-012, HU-013, HU-016, HU-024 y épica EP-SIG-002 (jornada ya no va en la elección ni en el Excel) — bloque C",
+            "Regenerar 04-Historias-de-Usuario.xlsx con python documentacion/_generar_entregables.py cuando los .py de datos estén",
+        ],
+        "out_scope": [
+            "Código. Prototipos (Mebel/Paula). Inventar JWT, segunda vuelta, acta pública",
+            "Renumerar HU-001 a 025. Las nuevas usan los huecos 008 y 019",
+        ],
+        "listo": (
+            "04-Historias-de-Usuario.xlsx tiene HU-008 y HU-019. EP-SIG-001 ya no lista recuperar como fuera. "
+            "HU-013 no pide jornada en la convocatoria. Criterios Gherkin en la hoja de esa HU."
+        ),
+        "archivos": "documentacion/_excel_senior_data_aprendiz.py (HU-008) · _excel_senior_data_funcionario.py (HU-019 + parches 012/013/016) · _excel_senior_data_epicas.py · hoja 10-LUCERO de ESTE Excel",
+    },
 ]
 
 TAREAS = [
-    {"id": "T-S2-01", "hu": "HU-S2-026", "persona": "Paula", "capa": "UX", "estado": "Por hacer",
-     "titulo": "Brief y 3 direcciones de landing",
-     "detalle": "A = institucional SENA (hero, dos puertas). B = urna/confianza (voto seguro, sin totales). C = centro de formación (sede, convocatoria). Cada una desktop 1440 y móvil 375.",
-     "listo": "3 prototipos entregados. El viernes el equipo elige 1. No hay PR de CSS a develop."},
+    {"id": "T-S2-01", "hu": "HU-S2-026", "persona": "Sofia", "capa": "Front", "estado": "En curso",
+     "titulo": "Landing page SIGEVA en producción",
+     "detalle": "Pulir / de sigevaFront: dos puertas (urna y gestión), identidad SENA, desktop y 375 px. No reescribe Equipo.tsx (Paula). No toca urna.",
+     "listo": "/ abre la landing. CTA a /login-aprendiz y /login. Se ve bien en celular."},
     {"id": "T-S2-02", "hu": "HU-S2-027", "persona": "Maicol", "capa": "Back", "estado": "Por hacer",
      "titulo": "Ordenar listados de elección: más reciente primero",
      "detalle": "orderBy fecha_inicio desc + ideleccion desc en todos los GET de elección. El front no invierte el array.",
@@ -372,34 +634,74 @@ TAREAS = [
      "titulo": "Perfil admin_sistema aislado a su centro",
      "detalle": "INSERT perfil. Login devuelve el rol y el centro. Gates en elecciones y aprendices. 403 a rutas de red. Menú sin torre nacional. Usuario demo por centro para QA.",
      "listo": "Matriz de la hoja ROLES: las celdas de admin_sistema coinciden con Thunder."},
-    {"id": "T-S2-06", "hu": "HU-S2-026", "persona": "Equipo", "capa": "Review", "estado": "Por hacer",
-     "titulo": "Review viernes: elegir prototipo ganador",
-     "detalle": "10 min Paula. Voto del equipo. Se anota en esta hoja el ganador (A, B o C). Implementación = Sprint 3.",
-     "listo": "Acta de 3 líneas: ganador + por qué + qué no se copia de los perdedores."},
+    {"id": "T-S2-06", "hu": "HU-S2-040", "persona": "Equipo", "capa": "Review", "estado": "Por hacer",
+     "titulo": "Review viernes: demo de carriles + HU-008/019 de Lucero",
+     "detalle": "Sofia landing. Paula urna móvil. Mebel informe por jornada. Maicol ojo login. Adrii 409. Lucero enseña HU-008 y HU-019 en el Excel de historias.",
+     "listo": "Acta de 5 líneas: qué se vio, qué queda, Lucero dejó 008 y 019."},
     {"id": "T-S2-07", "hu": "HU-S2-031", "persona": "Mebel", "capa": "Front UX", "estado": "Por hacer",
      "titulo": "SweetAlert al crear elección (funcionario)",
      "detalle": "Quitar window.alert del éxito del POST crear. Swal.fire success: «Elección creada» / «La elección se registró con éxito.» Botón Entendido, verde SENA. El 409 de Adrii también va en Swal error, no en alert nativo.",
      "listo": "Crear como funcionario = Swal bonito. Cero alert() en esa pantalla. El JSON del back no se cambia."},
+    {"id": "T-S2-08", "hu": "HU-S2-032", "persona": "Mebel", "capa": "UX", "estado": "En curso",
+     "titulo": "Prototipo informe candidatos por jornada (quién va ganando)",
+     "detalle": "Figma/HTML: 3 bloques Mañana/Tarde/Noche. En cada uno votos, ceros, ganador o empate. Una elección, corte por candidatos.jornada. El aprendiz no lo ve.",
+     "listo": "Prototipo visto en review. Cero código de totales. Lucero usa esto para redactar HU-019."},
+    {"id": "T-S2-09", "hu": "HU-S2-033", "persona": "Paula", "capa": "UX móvil", "estado": "En curso",
+     "titulo": "Prototipos móvil de la urna del aprendiz",
+     "detalle": "Mismos pasos que la web a 375 px: login aprendiz, recuperar, elegir jornada, votaciones, tarjetón, OTP, confirmar, comprobante. No app nativa.",
+     "listo": "Recorrido Figma/HTML completo en celular. Grafía Mañana/Tarde/Noche."},
+    {"id": "T-S2-10", "hu": "HU-S2-034", "persona": "Maicol", "capa": "Front", "estado": "Hecho",
+     "titulo": "Conectar recuperar contraseña al API de Alex",
+     "detalle": "Reescribir RecuperarContrasena.tsx. 3 pasos. POST solicitar y confirmar. JSON del paquete para-companero/recuperar-password/. Sin documento. Sin toast de éxito si falló.",
+     "listo": "Network = las 2 rutas nuevas. Login con la clave nueva. Cero llamadas a las rutas viejas."},
+    {"id": "T-S2-11", "hu": "HU-S2-035", "persona": "Maicol", "capa": "Front", "estado": "En curso",
+     "titulo": "Ojo de contraseña y mensaje si las credenciales fallan",
+     "detalle": "En Login.tsx (gestión y aprendiz): botón mostrar/ocultar clave. Si el POST de login falla, pintar el message del back (no un genérico que mienta).",
+     "listo": "Ojo visible. Clave mala = texto del API. Clave buena = mismo navigate de hoy."},
+    {"id": "T-S2-12", "hu": "HU-S2-036", "persona": "Alex", "capa": "Back", "estado": "Hecho",
+     "titulo": "API recuperar contraseña (solicitar + confirmar)",
+     "detalle": "Tabla recuperacion_password. OTP 6 al correo. 4 roles. 410 al PUT viejo. README + JSON para Maicol en para-companero/recuperar-password/.",
+     "listo": "Thunder 200/404/400. Mail llega. Login con clave nueva."},
+    {"id": "T-S2-13", "hu": "HU-S2-037", "persona": "Alex", "capa": "Back + Front", "estado": "Hecho",
+     "titulo": "Import Excel Sofia Plus (funcionario y admin red)",
+     "detalle": "Parser C2. Password=documento. Sin jornada en el form. KPIs + SweetAlert de resultado. Admin elige regional/centro.",
+     "listo": "xls real importa. Reimport no duplica programa. Aprendiz entra con documento."},
+    {"id": "T-S2-14", "hu": "HU-S2-038", "persona": "Alex", "capa": "Back + Front", "estado": "Hecho",
+     "titulo": "Jornada fuera de la elección y de la carga",
+     "detalle": "Elección global. Import deja grupo.jornada vacía. El aprendiz elige al entrar. Urna ?jornada=.",
+     "listo": "201 crear sin jornada. Import sin combo. Picker /elegir-jornada en aprendiz nuevo."},
+    {"id": "T-S2-15", "hu": "HU-S2-039", "persona": "Paula", "capa": "Front", "estado": "Hecho",
+     "titulo": "Página Equipo de desarrollo",
+     "detalle": "Ruta /equipo ya prototipada e implementada. Sofia solo enlaza desde la landing.",
+     "listo": "/equipo pinta al equipo."},
+    {"id": "T-S2-16", "hu": "HU-S2-040", "persona": "Lucero", "capa": "Docs", "estado": "Por hacer",
+     "titulo": "Meter HU-008 y HU-019 en el Excel de historias (y parchar jornada)",
+     "detalle": "Sigue la hoja 10-LUCERO al pie de la letra. No inventa IDs. Huecos 008 y 019. Actualiza HU-012/013/016/024 y EP-SIG-001/002.",
+     "listo": "04-Historias-de-Usuario.xlsx regenerado con las dos HU nuevas y jornada corregida en convocatoria."},
+    {"id": "T-S2-17", "hu": "HU-S2-029", "persona": "Adrii Eraso", "capa": "Back", "estado": "Por hacer",
+     "titulo": "Cerrar los CA-029-* que YA están en 05-CRITERIOS (no inventar otros)",
+     "detalle": "Adrii no escribe criterios nuevos: implementa RN-S2-001 contra CA-029-01 a CA-029-08. Thunder de los 5 disparos. 409 en español.",
+     "listo": "Columna QA de CA-029-01 a 08 en sí. Mismos textos de 05-CRITERIOS."},
 ]
 
 CRITERIOS = [
-    # Paula
-    {"hu": "HU-S2-026", "id": "CA-026-01", "tipo": "Feliz", "persona": "Paula",
-     "dado": "un visitante abre la landing (no logueado)",
-     "cuando": "mira cualquiera de los 3 prototipos",
-     "entonces": "entiende en menos de 5 segundos qué es SIGEVA y ve dos CTA: votar (urna) y gestionar (mesa/admin)"},
-    {"hu": "HU-S2-026", "id": "CA-026-02", "tipo": "UX", "persona": "Paula",
-     "dado": "los 3 prototipos",
-     "cuando": "se comparan lado a lado",
-     "entonces": "son direcciones distintas (no el mismo layout con otro color). A institucional, B urna/confianza, C centro"},
-    {"hu": "HU-S2-026", "id": "CA-026-03", "tipo": "UX", "persona": "Paula",
-     "dado": "cada prototipo",
+    # Sofia landing
+    {"hu": "HU-S2-026", "id": "CA-026-01", "tipo": "Feliz", "persona": "Sofia",
+     "dado": "un visitante no logueado abre /",
+     "cuando": "mira la landing",
+     "entonces": "entiende qué es SIGEVA y ve dos CTA: votar (urna) y gestionar (mesa/admin)"},
+    {"hu": "HU-S2-026", "id": "CA-026-02", "tipo": "UX", "persona": "Sofia",
+     "dado": "la landing",
      "cuando": "se abre en 1440 px y en 375 px",
      "entonces": "CTA visibles, sin texto cortado, sin scroll horizontal"},
-    {"hu": "HU-S2-026", "id": "CA-026-04", "tipo": "Fuera", "persona": "Paula",
-     "dado": "el review del viernes",
-     "cuando": "se elige un ganador",
-     "entonces": "NO se mergea a develop este sprint. Queda acta para Sprint 3"},
+    {"hu": "HU-S2-026", "id": "CA-026-03", "tipo": "Feliz", "persona": "Sofia",
+     "dado": "los dos botones",
+     "cuando": "el visitante pulsa cada uno",
+     "entonces": "urna va a /login-aprendiz y gestión a /login. No pide jornada ni documento en /"},
+    {"hu": "HU-S2-026", "id": "CA-026-04", "tipo": "Fuera", "persona": "Sofia",
+     "dado": "esta historia",
+     "cuando": "se cierra",
+     "entonces": "no se tocó urna, OTP, Equipo.tsx ni RecuperarContrasena"},
     # Maicol
     {"hu": "HU-S2-027", "id": "CA-027-01", "tipo": "Feliz", "persona": "Maicol",
      "dado": "un centro con 3 elecciones fecha_inicio 20, 25 y 27 de agosto 2026",
@@ -529,6 +831,131 @@ CRITERIOS = [
      "dado": "esta historia",
      "cuando": "se cierra",
      "entonces": "no se rediseñó el form, no se tocó urna/OTP/acta, no se cambió el JSON del 201"},
+    # Mebel informe
+    {"hu": "HU-S2-032", "id": "CA-032-01", "tipo": "Feliz", "persona": "Mebel",
+     "dado": "una elección con candidatos en Mañana, Tarde y Noche",
+     "cuando": "se mira el prototipo de informe",
+     "entonces": "hay tres bloques, uno por jornada, con votos (ceros incluidos) y quién va primero o empate en ESA franja"},
+    {"hu": "HU-S2-032", "id": "CA-032-02", "tipo": "UX", "persona": "Mebel",
+     "dado": "las etiquetas de jornada",
+     "cuando": "se leen",
+     "entonces": "dicen Mañana, Tarde, Noche (con ñ). No manana ni 3 elecciones distintas"},
+    {"hu": "HU-S2-032", "id": "CA-032-03", "tipo": "Fuera", "persona": "Mebel",
+     "dado": "el aprendiz",
+     "cuando": "abre urna",
+     "entonces": "no ve este informe (HU-007). El prototipo es de funcionario"},
+    {"hu": "HU-S2-032", "id": "CA-032-04", "tipo": "Fuera", "persona": "Mebel",
+     "dado": "este sprint",
+     "cuando": "se cierra el prototipo",
+     "entonces": "no hay PR de generacion_reporte_controller ni PDF nuevo"},
+    # Paula móvil
+    {"hu": "HU-S2-033", "id": "CA-033-01", "tipo": "Feliz", "persona": "Paula",
+     "dado": "un aprendiz en celular 375 px",
+     "cuando": "recorre el prototipo de urna",
+     "entonces": "puede hacer login, elegir jornada, ver votaciones, tarjetón, OTP, confirmar y comprobante — los mismos pasos que la web"},
+    {"hu": "HU-S2-033", "id": "CA-033-02", "tipo": "UX", "persona": "Paula",
+     "dado": "cada pantalla del prototipo",
+     "cuando": "se abre a 375 px",
+     "entonces": "CTA visibles, sin scroll horizontal, sin campos que la web no tenga"},
+    {"hu": "HU-S2-033", "id": "CA-033-03", "tipo": "Fuera", "persona": "Paula",
+     "dado": "esta historia",
+     "cuando": "se cierra",
+     "entonces": "no hay merge de código de urna a develop. No se prototipó gestión de funcionario"},
+    # Maicol recuperar
+    {"hu": "HU-S2-034", "id": "CA-034-01", "tipo": "Feliz", "persona": "Maicol",
+     "dado": "un correo que existe en usuarios o aprendiz",
+     "cuando": "POST /api/recuperar-password/solicitar con { email }",
+     "entonces": "200. Pasa al paso código. Network solo manda email. Ya no se pide documento"},
+    {"hu": "HU-S2-034", "id": "CA-034-02", "tipo": "Feliz", "persona": "Maicol",
+     "dado": "el código de 6 y una clave ≥ 8 (y repetir igual)",
+     "cuando": "POST /api/recuperar-password/confirmar",
+     "entonces": "200. Redirect /login-aprendiz si perfil Aprendiz, /login si staff. No llama login() del auth"},
+    {"hu": "HU-S2-034", "id": "CA-034-03", "tipo": "Excepción", "persona": "Maicol",
+     "dado": "correo inexistente o código mal",
+     "cuando": "falla el API",
+     "entonces": "se pinta message del back. No hay toast de éxito en el catch"},
+    {"hu": "HU-S2-034", "id": "CA-034-04", "tipo": "Fuera", "persona": "Maicol",
+     "dado": "esta pantalla",
+     "cuando": "se inspecciona Network",
+     "entonces": "cero llamadas a /api/usuarios/recuperar-contrasena, /api/aprendiz/recuperar-contrasena o PUT actualizar/contrasena"},
+    # Maicol ojo
+    {"hu": "HU-S2-035", "id": "CA-035-01", "tipo": "Feliz", "persona": "Maicol",
+     "dado": "login gestión o login aprendiz",
+     "cuando": "pulsa el ojo",
+     "entonces": "la clave se ve; al pulsar otra vez se oculta"},
+    {"hu": "HU-S2-035", "id": "CA-035-02", "tipo": "Excepción", "persona": "Maicol",
+     "dado": "correo o clave incorrectos",
+     "cuando": "envía el login",
+     "entonces": "aparece el message del back (o success:false). No entra. No dice que salió bien"},
+    {"hu": "HU-S2-035", "id": "CA-035-03", "tipo": "Feliz", "persona": "Maicol",
+     "dado": "credenciales correctas y usuario activo",
+     "cuando": "envía",
+     "entonces": "el navigate actual no cambia (urna o dashboard según perfil)"},
+    # Alex recuperar back
+    {"hu": "HU-S2-036", "id": "CA-036-01", "tipo": "Feliz", "persona": "Alex",
+     "dado": "un correo de aprendiz o staff",
+     "cuando": "POST solicitar",
+     "entonces": "200, mail con código 6, en desarrollo viene codigo_otp_temporal"},
+    {"hu": "HU-S2-036", "id": "CA-036-02", "tipo": "Feliz", "persona": "Alex",
+     "dado": "ese código vigente",
+     "cuando": "POST confirmar con nueva_password ≥ 8",
+     "entonces": "200, data.perfil y data.login. La clave vieja ya no entra"},
+    {"hu": "HU-S2-036", "id": "CA-036-03", "tipo": "Excepción", "persona": "Alex",
+     "dado": "correo que no existe / código mal / código de más de 5 min",
+     "cuando": "solicitar o confirmar",
+     "entonces": "404 CUENTA_NO_ENCONTRADA o 400 OTP_INVALIDO / OTP_EXPIRADO"},
+    {"hu": "HU-S2-036", "id": "CA-036-04", "tipo": "Seguridad", "persona": "Alex",
+     "dado": "PUT /api/aprendiz/actualizar/contrasena",
+     "cuando": "alguien lo llama",
+     "entonces": "410 y el mensaje de usar solicitar/confirmar"},
+    # Alex excel
+    {"hu": "HU-S2-037", "id": "CA-037-01", "tipo": "Feliz", "persona": "Alex",
+     "dado": "un xls Reporte de Aprendices Sofia Plus (C2 = ficha - programa)",
+     "cuando": "funcionario POST /api/aprendices/importarExcel",
+     "entonces": "inserted/updated/skipped. Centro = sesión. Clave inicial = documento. Sin jornada en el FormData"},
+    {"hu": "HU-S2-037", "id": "CA-037-02", "tipo": "Feliz", "persona": "Alex",
+     "dado": "Administrador de red",
+     "cuando": "importa eligiendo regional y centro",
+     "entonces": "mismo parser. centroFormacionId obligatorio. El funcionario no ve ese combo"},
+    {"hu": "HU-S2-037", "id": "CA-037-03", "tipo": "Feliz", "persona": "Alex",
+     "dado": "el mismo archivo otra vez",
+     "cuando": "reimporta",
+     "entonces": "0 insertados extra de programa. Updates no pisan la clave"},
+    {"hu": "HU-S2-037", "id": "CA-037-04", "tipo": "UX", "persona": "Alex",
+     "dado": "la carga terminó",
+     "cuando": "el front responde",
+     "entonces": "SweetAlert de importación + KPIs Insertados/Actualizados/Omitidos. Vista previa con scroll. Botón Subir al lado del archivo"},
+    # Alex jornada
+    {"hu": "HU-S2-038", "id": "CA-038-01", "tipo": "Feliz", "persona": "Alex",
+     "dado": "POST /api/eleccion/crear",
+     "cuando": "el body no trae jornada",
+     "entonces": "201. eleccion.jornada null. No 400 «jornada no válida»"},
+    {"hu": "HU-S2-038", "id": "CA-038-02", "tipo": "Feliz", "persona": "Alex",
+     "dado": "un aprendiz recién importado",
+     "cuando": "hace login",
+     "entonces": "jornada vacía/null y cae en /elegir-jornada. Después la urna llama ?jornada="},
+    # Paula equipo
+    {"hu": "HU-S2-039", "id": "CA-039-01", "tipo": "Feliz", "persona": "Paula",
+     "dado": "un visitante",
+     "cuando": "abre /equipo",
+     "entonces": "ve al equipo de desarrollo. La ruta ya existe en App.tsx"},
+    # Lucero
+    {"hu": "HU-S2-040", "id": "CA-040-01", "tipo": "Feliz", "persona": "Lucero",
+     "dado": "el Excel 04-Historias-de-Usuario.xlsx",
+     "cuando": "termina su carril",
+     "entonces": "existe HU-008 Recuperar contraseña (4 roles) con Como/quiero/para, sí entra, no entra y criterios Gherkin"},
+    {"hu": "HU-S2-040", "id": "CA-040-02", "tipo": "Feliz", "persona": "Lucero",
+     "dado": "el mismo Excel",
+     "cuando": "se busca el informe por jornada",
+     "entonces": "existe HU-019 después de HU-018. No se fusionó con el acta global. Grafía Mañana/Tarde/Noche"},
+    {"hu": "HU-S2-040", "id": "CA-040-03", "tipo": "Validación", "persona": "Lucero",
+     "dado": "HU-012, HU-013, HU-016, HU-024 y EP-SIG-001 / 002",
+     "cuando": "se leen",
+     "entonces": "ya no dicen que la elección o el Excel piden jornada. EP-SIG-001 ya no lista recuperar contraseña en fuera"},
+    {"hu": "HU-S2-040", "id": "CA-040-04", "tipo": "Fuera", "persona": "Lucero",
+     "dado": "esta historia",
+     "cuando": "se cierra",
+     "entonces": "no se tocó código. No se renumeraron HU-001 a 025. Los IDs nuevos son 008 y 019"},
 ]
 
 ROLES = [
@@ -539,7 +966,7 @@ ROLES = [
     ("Ver elecciones de OTRO centro", "No", "No", "No", "Sí"),
     ("Crear / editar elección de SU centro", "No", "Sí", "Sí", "No en este sprint (P10)"),
     ("Crear segunda elección el mismo día", "—", "409 (Adrii)", "409 (Adrii)", "—"),
-    ("Aviso al crear elección con éxito", "—", "SweetAlert (Mebel)", "Mismo Swal si crea", "—"),
+    ("Recuperar contraseña (correo + código)", "Sí (Maicol/Alex)", "Sí", "Sí", "Sí"),
     ("Ver padrón de SU centro", "No", "Sí (mesa)", "Sí", "Sí"),
     ("Filtrar padrón por teléfono / documento", "No", "Sí (Sofia)", "Sí, solo su centro", "Sí, eligiendo centro"),
     ("Ver padrón de toda la red", "No", "No", "No", "Sí"),
@@ -551,30 +978,34 @@ ROLES = [
 ]
 
 PERSONAS = [
-    ("Paula", "UX / Front landing", "HU-S2-026", "5",
-     "3 prototipos (A/B/C) desktop+móvil. Presenta el viernes.",
-     "Código de urna, OTP, form de elección, CSS a develop.",
-     "sigevaFront · feat/landing-prototipos  ·  entregables/sprint-2/landing/"),
-    ("Maicol", "Back listados elección", "HU-S2-027", "2",
-     "orderBy fecha_inicio DESC en todos los GET de elección. Thunder [reciente → vieja].",
-     "La regla de un día (eso es Adrii). Filtros de aprendices. Candidatos.",
-     "sigevaBack · feat/elecciones-orden-reciente"),
-    ("Sofia", "Front + GET padrón", "HU-S2-028", "5",
-     "Barra de filtros: centro, celular, documento, email, nombre, estado. API combinable.",
-     "Form de candidato / urna (cerrado en sprint anterior). Elección un-día.",
-     "sigevaFront · feat/filtros-aprendices  ·  aprendizs_controller.ts"),
+    ("Sofia", "Front landing", "HU-S2-026", "5",
+     "Landing / en producción: dos puertas, SENA, desktop+móvil. El filtro de padrón (028) si da tiempo.",
+     "Equipo.tsx (Paula). Recuperar contraseña (Maicol). Urna código. Informe por jornada (Mebel).",
+     "sigevaFront · Inicio.tsx"),
+    ("Maicol", "Front acceso", "HU-S2-034 + 035", "7",
+     "Recuperar contraseña conectado al API (Hecho). Ojo + mensaje de credenciales en login. GET elecciones reciente-primero (027) si no cerró.",
+     "Backend de recuperar (Alex). Landing. Import Excel.",
+     "sigevaFront · RecuperarContrasena.tsx · Login.tsx"),
+    ("Paula", "UX móvil + equipo", "HU-S2-033 + 039", "7",
+     "Prototipos 375 px de TODA la urna del aprendiz (igual que web). Equipo /equipo ya Hecho.",
+     "Landing (Sofia). Código de urna. Form crear elección.",
+     "Figma móvil aprendiz  ·  Equipo.tsx"),
     ("Adrii Eraso", "Back regla de elección", "HU-S2-029", "5",
-     "Guard 409 en crear y actualizar. Mensaje en español. 5 disparos Thunder de CRITERIOS.",
+     "Implementar los criterios CA-029-01 a 08 que YA están en 05-CRITERIOS. No inventa otra regla. Thunder 409.",
      "Orden del listado (Maicol). OTP, voto, acta, candidatos. Solape de ventanas.",
-     "sigevaBack · feat/eleccion-un-dia  ·  eleccion_controller.ts arriba (crear/actualizar)"),
-    ("Alex", "SM + rol admin_sistema", "HU-S2-030", "8",
-     "Perfil, login, gates por centro, 403 a red, menú, usuario demo. Facilita el review.",
-     "JWT, tabla organizacion, que el admin vote, implementar la landing ganadora.",
-     "sigevaBack · feat/rol-admin-sistema"),
-    ("Mebel", "Front UX crear elección", "HU-S2-031", "3",
-     "SweetAlert2 en el 201 del funcionario. Cero alert() nativo. El 409 de Adrii también en Swal error.",
-     "GET de elección (Maicol). Guard del día (Adrii). Campos del form. Landing de Paula. OTP/urna.",
-     "sigevaFront · feat/swal-eleccion-creada"),
+     "sigevaBack · feat/eleccion-un-dia  ·  eleccion_controller.ts crear/actualizar"),
+    ("Alex", "SM + back/front ya entregado", "HU-S2-036/037/038 + 030", "8+",
+     "Hecho: recuperar back, import Excel, quitar jornada. Sigue admin_sistema si no cerró. Facilita a Lucero y a Maicol.",
+     "JWT, tabla organizacion, implementar informe por jornada, prototipos de Paula/Mebel.",
+     "sigevaBack · recuperar_password · import_ficha · CargarAprendices*.tsx"),
+    ("Mebel", "UX informe + Swal", "HU-S2-032 + 031", "8",
+     "Prototipo quién va ganando por jornada (3 bloques). SweetAlert al crear elección si no lo cerró.",
+     "API de totales. Landing. Recuperar clave. Import.",
+     "Figma informe-jornada  ·  form crear elección"),
+    ("Lucero", "Historias de usuario", "HU-S2-040", "5",
+     "Escribe HU-008 (recuperar clave) y HU-019 (informe por jornada) donde dice la hoja 10-LUCERO. Parcha jornada en 012/013/016/024.",
+     "Código. Figma. Renumerar HU viejas. Inventar JWT o segunda vuelta.",
+     "documentacion/_excel_senior_data_*.py  ·  entregables/sprint-1/04-Historias-de-Usuario.xlsx"),
 ]
 
 TIPO_BG = {
@@ -600,15 +1031,17 @@ def sheet_portada(wb):
     banner(
         ws, 8,
         "SIGEVA   ·   Sprint 2   ·   31 ago – 4 sep 2026",
-        "Meta: landing presentable (3 prototipos), listados con lo reciente arriba, padrón filtrable, "
-        "una elección por centro el mismo día, rol admin_sistema aislado a su sede, SweetAlert al crear.",
+        "Meta: landing (Sofia), recuperar clave (Alex+Maicol), import Excel sin jornada (Alex), "
+        "informe por jornada (Mebel), urna móvil (Paula), criterios un-día (Adrii), HU faltantes (Lucero).",
     )
 
+    n_hu = len(HISTORIAS)
+    n_sp = sum(int(h["sp"]) if str(h["sp"]).isdigit() else 5 for h in HISTORIAS)
     kpis = [
-        (1, 2, "6  HISTORIAS", "Una por persona con carril.", GREEN, WHITE),
-        (3, 4, "28  PUNTOS", "5+2+5+5+8+3. Cabe en 5 días.", GOLD, WHITE),
+        (1, 2, f"{n_hu}  HISTORIAS", "Carriles + lo ya construido.", GREEN, WHITE),
+        (3, 4, f"{n_sp}  PUNTOS", "Varias Hecho (Alex, Maicol, Paula equipo).", GOLD, WHITE),
         (5, 6, "5  DÍAS", "Lun 31 ago → vie 4 sep.", NAVY, WHITE),
-        (7, 8, "0  EN CURSO", "Arranca todo en Por hacer.", MUTED, WHITE),
+        (7, 8, "7  PERSONAS", "Entra Lucero. Adrii sigue en 029.", MUTED, WHITE),
     ]
     ws.row_dimensions[4].height = 36
     ws.row_dimensions[5].height = 20
@@ -630,7 +1063,7 @@ def sheet_portada(wb):
         ("Qué se hace", "Construir. El Sprint 1 fue especificar (RF/CU/HU). Este sprint toca código y prototipos."),
         ("Meta en una frase", SPRINT["meta"]),
         ("Quién acepta en review", "El equipo + Henry/Jorge si se convoca. Scrum Master: Alex"),
-        ("Equipo", "Paula, Maicol, Sofia, Adrii Eraso, Alex y Mebel. Seis carriles."),
+        ("Equipo", "Sofia, Maicol, Paula, Adrii Eraso, Alex, Mebel y Lucero (historias de usuario). Scrum Master: Alex"),
         ("Regla de producto que se suma", "Ya vige: una elección por centro (jornada en el candidato). Se suma RN-S2-001: no dos elecciones el mismo día (fecha_inicio) en el mismo centro."),
         ("Idioma / DoD", "Español. LISTO = criterios de la hoja 05-CRITERIOS en verde + Thunder/Network. Nadie toca OTP, voto ni acta."),
         ("Notion", "Sigue cobrando. Este Excel es el tablero del sprint."),
@@ -689,7 +1122,7 @@ def sheet_portada(wb):
     chart.shape = 4
     chart.legend = None
     chart.y_axis.scaling.min = 0
-    chart.y_axis.scaling.max = 10
+    chart.y_axis.scaling.max = 16
     chart.width = 15
     chart.height = 7
     ws.add_chart(chart, "E" + str(chart_row + 1))
@@ -705,13 +1138,22 @@ def sheet_kanban(wb):
     widths(ws, [2.4, 28, 28, 2.2, 28, 28, 2.2, 28, 28, 2.4])
     banner(
         ws, 10,
-        "Kanban del Sprint 2   ·   seis carriles   ·   nadie espera el merge del otro",
-        "Arranca todo en POR HACER. En el daily se mueve la tarjeta (cambia el estado en 03-TAREAS). "
-        "Fila de arriba: Paula · Maicol · Sofia. Fila de abajo: Adrii · Alex · Mebel.",
+        "Kanban del Sprint 2   ·   siete personas   ·   Lucero documenta, Adrii no cambia de criterios",
+        "Fila 1: Sofia landing · Maicol recuperar clave · Paula urna móvil. "
+        "Fila 2: Adrii un-día (CA-029) · Alex Excel/API (Hecho) · Mebel informe por jornada. "
+        "Fila 3: Lucero HU-008/019 · Maicol ojo login · Alex admin_sistema.",
     )
 
-    colores = ["92D050", GOLD, "3B6FA0", RED, NAVY, "6B4C9A"]
-    fondos_titulo = [LIGHT_SENA, TODO_BG, "E8F0F8", NO_BG, LIGHT_GOLD, "F3E8FF"]
+    colores = [
+        "92D050", GOLD, "3B6FA0", RED, NAVY, "6B4C9A",
+        "1F7A4D", "9A6B2F", "0E5C63", "5A6560", "39A900",
+        "0B3D2E", "8B1E3F", "3B6FA0", "6B4C9A",
+    ]
+    fondos_titulo = [
+        LIGHT_SENA, TODO_BG, "E8F0F8", NO_BG, LIGHT_GOLD, "F3E8FF",
+        OK_BG, LIGHT_GOLD, "E8F0F8", GRAY, LIGHT_SENA,
+        TODO_BG, NO_BG, "F3E8FF", LIGHT_GOLD,
+    ]
     cols_lane = [2, 5, 8]
 
     def card(r, c1, title, body, bg, h=78):
@@ -750,18 +1192,20 @@ def sheet_kanban(wb):
             card(start_row + 5, c1, "NO TOCA", " · ".join(h["out_scope"]), GRAY, 64)
             card(start_row + 6, c1, "RAMA / ENTREGA", h["rama"], WHITE, 40)
 
-    bloque(4, [0, 1, 2])
-    bloque(12, [3, 4, 5])
+    bloque(4, [0, 8, 7])
+    bloque(12, [3, 11, 6])
+    bloque(20, [14, 9, 4])
 
-    merge(ws, 20, 2, 20, 9)
+    merge(ws, 28, 2, 28, 9)
     paint(
-        ws.cell(20, 2),
-        "Cómo usarlo en el daily: cada quien dice SU carril (30 s). Si está bloqueado, se pinta la tarjeta de 03-TAREAS como En curso. "
-        "Paula no espera API. Maicol no espera a Adrii. Mebel no espera a Adrii para el Swal de éxito (el 409 sí, cuando el back exista). "
-        "Sofia coordina el combo de centro con Alex. Adrii solo toca crear/actualizar. Alex no reabre OTP. Mebel no toca GET ni el guard del día.",
+        ws.cell(28, 2),
+        "Daily: cada quien su carril (30 s). Adrii SOLO implementa CA-029-* (no reescribe criterios). "
+        "Lucero no pide API: escribe en entregables/sprint-1/04-Historias-de-Usuario.xlsx donde dice la hoja 10-LUCERO. "
+        "Mebel prototipa el informe; no pica totales. Paula prototipa móvil; no mergea urna. "
+        "Maicol no toca el back de recuperar. Alex ya entregó Excel + OTP de clave.",
         GRAY, font(9, False, MUTED), al(True, "center", "left"), NONE,
     )
-    ws.row_dimensions[20].height = 40
+    ws.row_dimensions[28].height = 44
     ws.sheet_view.zoomScale = 85
 
 
@@ -775,13 +1219,23 @@ def sheet_tareas(wb):
            "Filtros: Estado · Persona · HU. El daily solo mueve la columna Estado (Por hacer / En curso / Hecho / Bloqueado).")
     header_row(ws, 3, headers)
     fechas = {
-        "T-S2-01": "4-sep (review)",
+        "T-S2-01": "4-sep",
         "T-S2-02": "1-sep",
         "T-S2-03": "3-sep",
         "T-S2-04": "2-sep",
         "T-S2-05": "4-sep",
         "T-S2-06": "4-sep review",
         "T-S2-07": "2-sep",
+        "T-S2-08": "4-sep",
+        "T-S2-09": "4-sep",
+        "T-S2-10": "31-ago",
+        "T-S2-11": "2-sep",
+        "T-S2-12": "31-ago",
+        "T-S2-13": "31-ago",
+        "T-S2-14": "31-ago",
+        "T-S2-15": "31-ago",
+        "T-S2-16": "3-sep",
+        "T-S2-17": "2-sep",
     }
     estado_fill = {"Por hacer": (TODO_BG, TODO_TX), "En curso": (RUN_BG, RUN_TX), "Hecho": (OK_BG, OK_TX), "Bloqueado": (NO_BG, NO_TX)}
     for i, t in enumerate(TAREAS, 4):
@@ -835,8 +1289,8 @@ def sheet_historias(wb):
         "Como / quiero / para", "Problema", "Valor", "Sí entra", "No entra", "LISTO", "Archivos / rama",
     ]
     widths(ws, [12, 12, 10, 14, 8, 14, 32, 40, 36, 32, 40, 36, 40, 36])
-    banner(ws, 14, "Historias de usuario del Sprint 2   ·   una por carril",
-           "Prioridad en español. Una historia = un RF = un CU (CU-26 a CU-30). Los criterios Gherkin van en la hoja 05.")
+    banner(ws, 14, "Historias de usuario del Sprint 2   ·   carriles + lo construido esta semana",
+           "Prioridad en español. HU-S2-026 a 040 (CU-26 a 40). Adrii: HU-S2-029 / CA-029-* no se reescriben. Lucero escribe HU-008 y HU-019 en el Excel del Sprint 1 (hoja 10-LUCERO).")
     header_row(ws, 3, headers)
     for i, h in enumerate(HISTORIAS, 4):
         pbg, pfg = PRIO_BG[h["prio"]]
@@ -1000,17 +1454,17 @@ def sheet_dod(wb):
            "No se mergea a develop con criterios en blanco. El review del viernes es la demo, no el momento de descubrir el 409.")
     header_row(ws, 3, ["#", "Casilla", "Cómo se demuestra", "Quién la marca"])
     rows = [
-        ("1", "Criterios de SU historia en 05-CRITERIOS = sí", "Thunder o Network pegado en Evidencia, o link Figma para Paula", "Dueño del carril"),
-        ("2", "Rama feat/… publicada, PR abierto a develop", "URL del PR. Un carril = un PR. No se mezclan landing + rol + 409", "Dueño"),
-        ("3", "No se rompió el paquete elección global del 26-27 ago", "Sigue: una elección por centro, jornada en el candidato, urna ?jornada=", "Alex en review"),
-        ("4", "JSON de aprendices sin password/hash", "Inspección del body", "Sofia + Alex"),
-        ("5", "admin_sistema no ve centro B", "CA-030-03 en sí", "Alex"),
-        ("6", "Segundo POST el mismo día = 409, no 500", "CA-029-02 en sí. El form muestra el texto en español", "Adrii"),
-        ("7", "GET elecciones [reciente → vieja]", "CA-027-01 en sí", "Maicol"),
-        ("8", "3 prototipos vistos en review y ganador anotado", "CA-026-04. No hay commit de CSS a develop", "Paula + equipo"),
-        ("9", "Crear elección = SweetAlert, cero alert() nativo", "CA-031-01 y CA-031-04 en sí", "Mebel"),
-        ("10", "Nadie abrió OTP / voto / acta", "Diff del PR sin esos archivos", "Alex (SM)"),
-        ("11", "SQL local documentado si hay INSERT de perfil", "Una línea en el PR de Alex: el INSERT de admin_sistema. Cada PC lo corre", "Alex"),
+        ("1", "Criterios de SU historia en 05-CRITERIOS = sí", "Thunder, Network o link Figma en Evidencia", "Dueño del carril"),
+        ("2", "Adrii: CA-029-01 a 08 en sí (no criterios nuevos)", "Thunder del 409 el mismo día", "Adrii"),
+        ("3", "Lucero: HU-008 y HU-019 en 04-Historias-de-Usuario.xlsx", "IDs 008 y 019 visibles. Jornada parchada en 012/013", "Lucero"),
+        ("4", "Landing / con dos puertas", "CA-026 en sí", "Sofia"),
+        ("5", "Recuperar clave: Network solicitar+confirmar", "CA-034 y CA-036", "Maicol + Alex"),
+        ("6", "Import Excel Sofia Plus sin jornada", "CA-037", "Alex"),
+        ("7", "Prototipo informe por jornada (3 bloques)", "CA-032. Cero PR de totales", "Mebel"),
+        ("8", "Prototipo urna móvil 375 px", "CA-033", "Paula"),
+        ("9", "Ojo de clave + error de login claro", "CA-035", "Maicol"),
+        ("10", "Paquete elección global intacto", "jornada en candidato, urna ?jornada=, import sin jornada", "Alex en review"),
+        ("11", "Nadie reabre OTP de VOTO / votoxcandidato", "Diff sin esos archivos (recuperar clave SÍ usa OTP propio)", "Alex (SM)"),
     ]
     for i, row in enumerate(rows, 4):
         ws.row_dimensions[i].height = 36
@@ -1024,13 +1478,12 @@ def sheet_dod(wb):
         ws.cell(r, c).fill = fill(NAVY)
         ws.cell(r, c).border = THIN
     fuera = [
-        "Implementar en producción el prototipo ganador de landing (Sprint 3).",
+        "Código del informe/acta partido por jornada (Mebel prototipa; Lucero escribe HU-019; implementar es después).",
+        "App nativa. Paula solo prototipa la urna web a 375 px.",
         "Solape de ventanas en días distintos (27–29 vs 28–30).",
-        "Acta / ganador partido por jornada. OTP, voto, comprobante. Import Excel.",
         "JWT, tabla organizacion, multi-tenant de plataforma.",
-        "Que admin_sistema vote o impersonar una mesa desde el Administrador de red.",
-        "Fotos de equipo, picker de jornada, unique de tarjetón: ya se cerró o no es de esta semana.",
-        "SweetAlert en urna, OTP, voto, acta o login: Mebel solo toca el crear elección del funcionario.",
+        "Que admin_sistema vote. Segunda vuelta / sorteo.",
+        "OTP de votación, votoxcandidato, comprobante: no se reabren.",
     ]
     for i, line in enumerate(fuera, r + 1):
         merge(ws, i, 1, i, 4)
@@ -1048,34 +1501,33 @@ def sheet_daily(wb):
            "Se proyecta la hoja 02-KANBAN. Luego 06-ROLES si preguntan qué es admin_sistema. Los criterios de Adrii se leen en voz alta (el ejemplo del 27 de agosto).")
     bloques = [
         ("1. Meta de la semana (45 s)",
-         "No es otro sprint de papeles. Se construye. Al viernes: Paula trajo 3 landings y el equipo eligió una; "
-         "Maicol dejó lo reciente arriba; Sofia filtró el padrón por centro y teléfono; Adrii impide dos elecciones el mismo día; "
-         "Alex dejó vivo el rol admin_sistema, que solo ve su centro; Mebel cambió el alert nativo de crear elección por un SweetAlert."),
-        ("2. Regla nueva de producto (45 s) — para Adrii, en voz alta",
+         "Sofia deja la landing presentable. Maicol conectó recuperar clave (front) y pone el ojo en el login. "
+         "Paula prototipa la urna en celular (la página Equipo ya está). Mebel prototipa quién va ganando por jornada. "
+         "Alex ya entregó el back de recuperar, el Excel de Sofia Plus y quitar jornada. "
+         "Adrii implementa UNA elección por centro el mismo día — con los criterios que YA están en la hoja 05. "
+         "Lucero escribe las HU que faltaban: recuperar clave (HU-008) e informe por jornada (HU-019)."),
+        ("2. Adrii — los criterios no se reescriben (45 s)",
          "Si en el centro X ya hay una elección del 27 de agosto, no se puede crear otra ese mismo día en X. "
          "Otro centro el 27 sí. Cambiarle el nombre a la del 27 sí. Mover una del 28 al 27, no. "
-         "El día es fecha_inicio en hora Colombia, no el momento en que alguien pulsó Guardar. "
-         "No estamos prohibiendo que se solapen ventanas de varios días: eso no entra."),
-        ("3. Qué es admin_sistema (45 s) — para el equipo",
-         "No es el Administrador de la red. Es el administrador de UN centro de formación: ve elecciones y aprendices de su sede y nada más. "
-         "El funcionario sigue operando la mesa. El Administrador de red sigue viendo todo. El aprendiz sigue sin administrar."),
-        ("4. Carriles y archivos (60 s)",
-         "Paula: prototipos, cero código a develop. "
-         "Maicol: GET de elección, orderBy. "
-         "Sofia: pantalla aprendices + query celular/centro. "
-         "Adrii: crear y actualizar elección (el 409). "
-         "Alex: perfil + gates. "
-         "Mebel: SweetAlert al crear (funcionario). Cero alert() nativo. "
-         "Nadie abre OTP, voto, acta."),
-        ("5. Qué pedimos cada día (30 s)",
-         "Lunes Maicol puede cerrar. Martes Adrii y Mebel (éxito Swal). Miércoles Sofia se alinea con Alex en el combo de centro. "
-         "Jueves Alex deja el usuario demo. Viernes Paula presenta y se vota el prototipo."),
+         "Eso es CA-029-01 a 08. Adrii los implementa; no inventa otra regla ni otra hoja."),
+        ("3. Lucero — dónde escribe (45 s)",
+         "Hoja 10-LUCERO. Recuperar contraseña = HU-008 en el Excel de historias del Sprint 1 "
+         "(entregables/sprint-1/04-Historias-de-Usuario.xlsx), épica Acceso. "
+         "Informe por jornada = HU-019, justo después del acta HU-018. "
+         "También parcha HU-012/013/016 porque todavía dicen que la elección pide jornada."),
+        ("4. Carriles (60 s)",
+         "Sofia: Inicio.tsx. Maicol: RecuperarContrasena + Login ojo. Paula: Figma 375 px aprendiz. "
+         "Adrii: crear/actualizar elección 409. Alex: ya entregó; sigue admin_sistema si falta. "
+         "Mebel: Figma informe 3 jornadas + Swal crear si no cerró. Lucero: _excel_senior_data_*.py. "
+         "Nadie reabre OTP de VOTO ni votoxcandidato."),
+        ("5. Qué ya está Hecho (30 s)",
+         "Alex: API recuperar, import Excel, jornada fuera de elección/carga. "
+         "Maicol: front recuperar. Paula: /equipo. El daily no los vuelve a repartir."),
         ("6. Qué no entra (15 s)",
-         "Landing a producción. JWT. organizacion. Solape de ventanas. Import Excel. Segunda vuelta. Fotos del equipo."),
+         "Código del acta por jornada. App nativa. JWT. Solape de ventanas. Segunda vuelta."),
         ("Si preguntan “¿y el Sprint 1?”",
-         "Sigue en entregables/sprint-1/. Este paquete es entregables/sprint-2/. Las HU nuevas son HU-S2-026 a 031 (CU-26 a 31). No se renumeran las 001–025."),
-        ("Si preguntan “¿Paula implementa la web?”",
-         "No esta semana. Tres prototipos y el equipo elige. Implementar es Sprint 3. Si mergea CSS ahora, se revierte."),
+         "Sigue en entregables/sprint-1/. Este archivo es entregables/sprint-2/. "
+         "Lucero mete 008 y 019 en el Excel del 1. No se renumeran 001–025. El Sprint 2 usa HU-S2-026 a 040."),
     ]
     r = 4
     for titulo, cuerpo in bloques:
@@ -1099,23 +1551,23 @@ def sheet_como_leer(wb):
     page(ws, landscape=False)
     ws.sheet_properties.tabColor = MUTED
     widths(ws, [28, 72])
-    banner(ws, 2, "Cómo leer este Excel   ·   Sprint 2 SIGEVA",
-           "Un archivo. Nueve hojas. La verdad del daily está en 03-TAREAS (columna Estado). Los criterios no se improvisan: están en 05.")
+    banner(ws, 2, "Cómo leer este Excel   ·   Sprint 2 SIGEVA (actualizado 31 ago)",
+           "Un archivo. La verdad del daily está en 03-TAREAS (columna Estado). Adrii: criterios en 05, no se inventan. Lucero: hoja 10-LUCERO.")
     filas = [
         ("00-COMO LEER", "Esta hoja."),
-        ("01-SPRINT", "Portada: fechas, meta, 28 puntos, gráfico, compromiso."),
-        ("02-KANBAN", "Seis carriles (2 filas × 3). Se proyecta en el daily."),
-        ("03-TAREAS", "Tabla filtrable. Ahí se mueve Por hacer → En curso → Hecho. Desplegable en Estado."),
-        ("04-HISTORIAS", "Las seis HU (026–031) con sí entra / no entra / LISTO."),
-        ("05-CRITERIOS", "Gherkin. Contrato de QA. Adrii vive en CA-029-*. Mebel en CA-031-*. Columna QA se tacha sí/no."),
-        ("06-ROLES", "Qué ve cada perfil. Definición de admin_sistema. Alex implementa esta matriz."),
-        ("07-POR PERSONA", "Corte de archivos y dependencias reales (no inventadas)."),
-        ("08-LISTO", "DoD del sprint + lo que queda fuera."),
-        ("09-KICKOFF", "Guion de 8 minutos para el lunes 31."),
-        ("IDs", "HU-S2-026…031 · RF-NU-026…031 · CU-26…31 · T-S2-01…07. No se pisan las HU-001 a 025 del Sprint 1."),
-        ("RN-S2-001", "Un centro + un día de fecha_inicio = una elección. Zona America/Bogota."),
-        ("Repos", "Back: este repo. Front de producción: sigevaFront (Paula landing, Sofia padrón, Mebel Swal). sigeva-front/ es contrato de agente, no la landing pública."),
-        ("Regenerar", "python documentacion/_generar_sprint2.py  →  sobreescribe este xlsx. No editar a mano las historias; editar el .py."),
+        ("01-SPRINT", "Portada: fechas, meta, puntos, gráfico, compromiso."),
+        ("02-KANBAN", "7 personas. 3 filas × 3. Se proyecta en el daily."),
+        ("03-TAREAS", "Tabla filtrable. Estado: Por hacer / En curso / Hecho / Bloqueado. Varias ya Hecho (Alex, Maicol recuperar, Paula equipo)."),
+        ("04-HISTORIAS", "HU-S2-026 a 040. Las del Sprint 1 (001–025) NO se renumeran."),
+        ("05-CRITERIOS", "Gherkin. Adrii = CA-029-* (ya escritos: los implementa). Lucero = CA-040-*."),
+        ("06-ROLES", "Qué ve cada perfil. admin_sistema."),
+        ("07-POR PERSONA", "Carril, qué no abre, repo."),
+        ("08-LISTO", "DoD + huecos de documentación (para Lucero y el SM)."),
+        ("09-KICKOFF", "Guion corto del lunes."),
+        ("10-LUCERO", "DÓNDE escribir HU-008 recuperar clave y HU-019 informe por jornada. Archivos y IDs fijos."),
+        ("IDs Sprint 2", "HU-S2-026…040 · T-S2-01…17. Huecos del Sprint 1 que Lucero usa: HU-008 y HU-019."),
+        ("Repos", "Back: este repo. Front: sigevaFront. Contrato recuperar: para-companero/recuperar-password/."),
+        ("Regenerar", "python documentacion/_generar_sprint2.py  →  sobreescribe el xlsx. Editar el .py, no el Excel a mano."),
     ]
     r = 4
     for k, v in filas:
@@ -1124,6 +1576,129 @@ def sheet_como_leer(wb):
         ws.row_dimensions[r].height = 32
         r += 1
     ws.freeze_panes = "A4"
+
+
+def sheet_lucero(wb):
+    ws = wb.create_sheet("10-LUCERO")
+    page(ws)
+    ws.sheet_properties.tabColor = "6B4C9A"
+    widths(ws, [14, 18, 28, 52, 52])
+    banner(
+        ws, 5,
+        "Lucero   ·   dónde va cada historia   ·   no inventes IDs   ·   no toques código",
+        "El Excel de producto es entregables/sprint-1/04-Historias-de-Usuario.xlsx (se regenera desde documentacion/_excel_senior_data_*.py). "
+        "Los huecos libres del Sprint 1 son HU-008 y HU-019. No renumeres 001–007 ni 010–018 ni 020–025.",
+    )
+    r = 4
+    merge(ws, r, 1, r, 5)
+    paint(ws.cell(r, 1), "A — Recuperar contraseña  →  HU-008 (NUEVA)", GREEN, font(11, True, WHITE), al(False, "center", "left"))
+    for c in range(2, 6):
+        ws.cell(r, c).fill = fill(GREEN)
+        ws.cell(r, c).border = THIN
+    r += 1
+    header_row(ws, r, ["Qué", "ID a usar", "Archivo que editas", "Dónde / cómo", "Contrato de producto"], GREEN, WHITE)
+    filas_a = [
+        ("Nueva historia", "HU-008 · RF-NU-008 · CU-8",
+         "documentacion/_excel_senior_data_aprendiz.py (al final, o un bloque 'acceso')",
+         "Como aprendiz O gestor, quiero recuperar mi clave con el correo y un código de 6, para entrar de nuevo. UN solo flujo para Aprendiz, Funcionario, admin_sistema y Administrador. No pregunta el rol.",
+         "API: POST /api/recuperar-password/solicitar {email} y POST .../confirmar {email, codigo, nueva_password}. Paquete: para-companero/recuperar-password/README.md"),
+        ("Épica", "EP-SIG-001 Acceso",
+         "documentacion/_excel_senior_data_epicas.py",
+         "Quita «recuperar contraseña» de la lista fuera. Agrégalo al alcance y a historias: HU-001 · HU-008 · HU-010.",
+         "Hoy el campo fuera dice explícitamente que recuperar NO tiene HU. Ese es el hueco."),
+        ("Criterios mínimos", "CA-008-01…",
+         "La misma entrada de HU-008, lista cp/ca",
+         "Feliz: correo existe → 200 y mail. Feliz: código+clave≥8 → 200 y perfil. Excepción: 404 CUENTA_NO_ENCONTRADA. Excepción: 400 OTP_INVALIDO / OTP_EXPIRADO. Fuera: no login automático.",
+         "Copia los JSON de para-companero/recuperar-password/json/"),
+        ("No pongas esto", "—",
+         "No crees HU-026 de producto (026 ya es del Sprint 2, landing)",
+         "No hagas una HU de aprendiz y otra de funcionario: el back es el mismo.",
+         "No documentes PUT /api/aprendiz/actualizar/contrasena: está en 410."),
+    ]
+    for i, row in enumerate(filas_a, r + 1):
+        ws.row_dimensions[i].height = 72
+        for c, v in enumerate(row, 1):
+            paint(ws.cell(i, c), v, WHITE, font(9, c == 1, NAVY), al(True, "top", "left"))
+    r = r + 1 + len(filas_a) + 1
+    merge(ws, r, 1, r, 5)
+    paint(ws.cell(r, 1), "B — Informe de candidatos por jornada (quién va ganando)  →  HU-019 (NUEVA)", GOLD, font(11, True, WHITE), al(False, "center", "left"))
+    for c in range(2, 6):
+        ws.cell(r, c).fill = fill(GOLD)
+        ws.cell(r, c).border = THIN
+    r += 1
+    header_row(ws, r, ["Qué", "ID a usar", "Archivo que editas", "Dónde / cómo", "Contrato de producto"], GOLD, WHITE)
+    filas_b = [
+        ("Nueva historia", "HU-019 · RF-NU-019 · CU-19",
+         "documentacion/_excel_senior_data_funcionario.py  DESPUÉS de HU-018 (acta)",
+         "Como funcionario, quiero el informe de candidatos partido por Mañana / Tarde / Noche y ver quién va ganando en cada franja. NO fusionar con HU-018 (el acta global sigue).",
+         "El corte es candidatos.jornada, no tres elecciones. Grafía con ñ. El aprendiz no lo ve (HU-007)."),
+        ("Épica", "EP-SIG-004 Acta",
+         "_excel_senior_data_epicas.py",
+         "Alcance: HU-018 (acta global) + HU-019 (corte por jornada). Fuera: aprendiz ve totales, segunda vuelta.",
+         "Mebel prototipa (HU-S2-032). Lucero escribe. El código del informe NO es de Lucero."),
+        ("Criterios mínimos", "CA-019-01…",
+         "En la HU-019",
+         "Feliz: 3 bloques. Ceros incluidos. Un máximo = ganando; empate declarado. Fuera: no se implementa API en el mismo commit de la HU.",
+         "Usa el prototipo de Mebel cuando exista. Si aún no, deja el Gherkin igual."),
+        ("No pongas esto", "—",
+         "No uses HU-S2-032 como ID de producto",
+         "HU-S2-032 es la tarea de prototipo de ESTA semana. La historia de producto permanente es HU-019.",
+         "No pidas jornada en la elección (eso ya se quitó)."),
+    ]
+    for i, row in enumerate(filas_b, r + 1):
+        ws.row_dimensions[i].height = 72
+        for c, v in enumerate(row, 1):
+            paint(ws.cell(i, c), v, WHITE, font(9, c == 1, NAVY), al(True, "top", "left"))
+    r = r + 1 + len(filas_b) + 1
+    merge(ws, r, 1, r, 5)
+    paint(ws.cell(r, 1), "C — Parches (historias VIEJAS que ya no coinciden con el código)", RED, font(11, True, WHITE), al(False, "center", "left"))
+    for c in range(2, 6):
+        ws.cell(r, c).fill = fill(RED)
+        ws.cell(r, c).border = THIN
+    r += 1
+    header_row(ws, r, ["HU / épica", "Qué tiene hoy (mal)", "Qué debe decir", "Archivo", "Por qué"], RED, WHITE)
+    filas_c = [
+        ("HU-013 / HU-014 crear-editar elección",
+         "La épica 002 dice «elección con jornada Mañana/Tarde/Noche».",
+         "Una elección por centro, SIN jornada en la convocatoria. Jornada vive en el candidato y la elige el aprendiz al entrar.",
+         "_excel_senior_data_funcionario.py · _excel_senior_data_epicas.py EP-SIG-002",
+         "Paquete 26-27 ago + HU-S2-038 de Alex."),
+        ("HU-012 y HU-024 import Excel",
+         "«el código pide jornada». Plantilla genérica.",
+         "Reporte de Aprendices Sofia Plus: C2 = ficha - programa, filas desde 5. Password = documento. NO se elige jornada en la carga. Informe insertados/actualizados/omitidos.",
+         "_excel_senior_data_funcionario.py HU-012 · _excel_senior_data_admin.py HU-024",
+         "Alex ya lo construyó (HU-S2-037)."),
+        ("HU-016 candidato",
+         "Puede no mencionar jornada del candidato.",
+         "Select obligatorio Mañana|Tarde|Noche en el candidato. Unique tarjetón+jornada. Urna GET ?jornada=.",
+         "_excel_senior_data_funcionario.py HU-016",
+         "Ya era el paquete de Sofia/Maicol; el Excel de producto se quedó atrás."),
+        ("EP-SIG-001 Acceso",
+         "fuera: recuperar contraseña · no hay HU",
+         "Alcance incluye HU-008. Fuera ya no lista recuperar.",
+         "_excel_senior_data_epicas.py",
+         "Maicol front + Alex back ya existen."),
+        ("No hay HU de Equipo ni de landing ni de ojo de login",
+         "Páginas / y /equipo y el ojo del password no están en el backlog de 22.",
+         "Opcional este sprint: nota en épica de acceso o HU-009 (ojo login) si te alcanza. Landing = HU-S2-026 (sprint 2, no la muevas al 1).",
+         "Si da tiempo: HU-009 «ver/ocultar clave y error de credenciales» ligado a Maicol HU-S2-035.",
+         "Prioridad: primero 008 y 019. Luego los parches de jornada. Luego HU-009 si sobra el miércoles."),
+    ]
+    for i, row in enumerate(filas_c, r + 1):
+        ws.row_dimensions[i].height = 64
+        for c, v in enumerate(row, 1):
+            paint(ws.cell(i, c), v, WHITE, font(9, c == 1, NAVY), al(True, "top", "left"))
+    r = r + 1 + len(filas_c) + 1
+    merge(ws, r, 1, r, 5)
+    paint(
+        ws.cell(r, 1),
+        "Cómo entregar: 1) edita los .py de documentacion/_excel_senior_data_*.py  2) corre python documentacion/_generar_entregables.py  "
+        "3) abre entregables/sprint-1/04-Historias-de-Usuario.xlsx y enseña HU-008 y HU-019 en el daily. "
+        "No edites el xlsx a mano: se pisa al regenerar. Criterios de Adrii (CA-029) NO se tocan.",
+        LIGHT_GOLD, font(9, False, GOLD), al(True, "center", "left"), NONE,
+    )
+    ws.row_dimensions[r].height = 48
+    ws.freeze_panes = "A5"
 
 
 def build():
@@ -1139,15 +1714,22 @@ def build():
     sheet_personas(wb)
     sheet_dod(wb)
     sheet_daily(wb)
-    # orden de pestañas
+    sheet_lucero(wb)
     order = [
         "00-COMO LEER", "01-SPRINT", "02-KANBAN", "03-TAREAS", "04-HISTORIAS",
-        "05-CRITERIOS", "06-ROLES", "07-POR PERSONA", "08-LISTO", "09-KICKOFF",
+        "05-CRITERIOS", "06-ROLES", "07-POR PERSONA", "08-LISTO", "09-KICKOFF", "10-LUCERO",
     ]
     for i, name in enumerate(order):
         wb.move_sheet(name, offset=i - wb.sheetnames.index(name))
-    wb.save(OUT)
-    print(f"OK {OUT}")
+    dest = OUT
+    try:
+        wb.save(dest)
+    except PermissionError:
+        dest = OUT.with_name(OUT.stem + "-actualizado.xlsx")
+        wb.save(dest)
+        print(f"AVISO el xlsx original esta abierto. Guarde y cierre. Este archivo: {dest}")
+        return
+    print(f"OK {dest}")
 
 
 if __name__ == "__main__":

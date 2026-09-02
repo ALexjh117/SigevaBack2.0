@@ -1,3 +1,5 @@
+> **Paquete para el compañero del front:** `para-companero/recuperar-password/` (README + JSON de cada API + Thunder). Este archivo es el mismo contrato, más corto.
+
 # README — Recuperar contraseña (frontend)
 
 **Repo:** `sigevaFront` (el React de producción, carpeta hermana de `sigevaBack`).  
