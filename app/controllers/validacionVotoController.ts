@@ -231,8 +231,7 @@ export default class ValidacionVotoController {
 
       // 9. Enviar email con OTP
       const emailLimpio = aprendiz.email?.trim()
-      const remitente =
-        process.env.MAIL_FROM_ADDRESS || process.env.SMTP_FROM_EMAIL || 'noreply@sigeva.com'
+      const remitente = 'onboarding@resend.dev'
 
       if (!emailLimpio) {
         return response.status(400).json({
