@@ -57,7 +57,7 @@ export default class RecuperacionPasswordController {
         await mail.send((message) => {
           message
             .to(cuenta.email)
-            .from(process.env.MAIL_FROM_ADDRESS || 'noreply@sigeva.com')
+          .from('onboarding@resend.dev')
             .subject('Código para recuperar tu contraseña - SIGEVA').html(`
               <h2>Recuperar contraseña</h2>
               <p>Hola ${cuenta.nombres} ${cuenta.apellidos},</p>
