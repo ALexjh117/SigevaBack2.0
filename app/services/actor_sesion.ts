@@ -3,11 +3,12 @@
  *
  * Roles:
  * - Aprendiz: urna de su centro. No administra.
- * - Funcionario: opera la mesa de UN centro.
- * - admin_sistema: administra UN centro (elecciones, padrón, import de su sede).
- *   Centro obligatorio. No ve tablero de red, no lista funcionarios de la red,
- *   no importa eligiendo otra sede, no vota.
- * - Administrador: gobierno de la red SENA. Este sprint no le recorta la torre.
+ * - Funcionario: opera la mesa de UN centro. No crea pares ni admin_sistema.
+ * - admin_sistema: administra UN centro (elecciones, padrón, import de su sede,
+ *   alta de funcionarios de SU sede). Centro obligatorio. No ve tablero de red,
+ *   no lista funcionarios de toda la red, no importa eligiendo otra sede, no vota.
+ * - Administrador: gobierno de la red. Crea admin_sistema y funcionarios
+ *   eligiendo el centro. Importa aprendices eligiendo el centro. Ve todo.
  *
  * Fuente del centro: usuarios.idcentro_formacion (sesión).
  * El cliente manda x-user-id o userId (mismo patrón que el import Excel).
@@ -153,12 +154,106 @@ export function bloquearTableroRed(
   return false
 }
 
+export function bloquearSiFaltaActor(
+  actor: ActorSesion | null,
+  response: HttpContext['response']
+): actor is null {
+  if (!actor) {
+    response.status(400).json({
+      success: false,
+      message: 'Falta userId en el body o x-user-id',
+    })
+    return true
+  }
+  return false
+}
+
+export function bloquearSiNoEsAdministrador(
+  actor: ActorSesion | null,
+  response: HttpContext['response']
+): boolean {
+  if (bloquearSiFaltaActor(actor, response)) return true
+  if (!actor.esAdministrador) {
+    response.status(403).json({
+      success: false,
+      message: 'Solo el Administrador de red puede hacer esta operación',
+    })
+    return true
+  }
+  return false
+}
+
+/** Administrador de red o admin_sistema de un centro. El funcionario de mesa no. */
+export function bloquearSiNoPuedeGestionarFuncionarios(
+  actor: ActorSesion | null,
+  response: HttpContext['response']
+): boolean {
+  if (bloquearSiFaltaActor(actor, response)) return true
+  if (actor.esAdministrador) return false
+  if (actor.esAdminSistema) {
+    if (!actor.idcentro) {
+      response.status(400).json({
+        success: false,
+        message: 'Tu usuario no tiene centro de formación asignado',
+      })
+      return true
+    }
+    return false
+  }
+  response.status(403).json({
+    success: false,
+    message: 'No tienes permiso para gestionar funcionarios',
+  })
+  return true
+}
+
+/**
+ * Centro destino al crear funcionario o al importar.
+ * admin_sistema / funcionario: el de la sesión (otro id = 403).
+ * Administrador: debe enviar el id (si no = 400).
+ */
+export function centroDestinoDeAlta(
+  actor: ActorSesion,
+  idPedido: unknown,
+  response: HttpContext['response']
+): number | null {
+  if (actor.esDeCentro) {
+    if (!actor.idcentro) {
+      response.status(400).json({
+        success: false,
+        message: 'Tu usuario no tiene centro de formación asignado',
+      })
+      return null
+    }
+    if (esCentroAjeno(actor, idPedido)) {
+      response.status(403).json({
+        success: false,
+        message: 'No puedes consultar ni administrar otro centro de formación',
+      })
+      return null
+    }
+    return actor.idcentro
+  }
+
+  const n = Number(idPedido)
+  if (!Number.isInteger(n) || n <= 0) {
+    response.status(400).json({
+      success: false,
+      message: 'Debes enviar idcentro_formacion (administrador de red)',
+    })
+    return null
+  }
+  return n
+}
+
+/** El funcionario de mesa no lista jurados. admin_sistema lista SOLO los de su sede. */
 export function bloquearRedFuncionarios(
   actor: ActorSesion | null,
   response: HttpContext['response']
 ): boolean {
-  if (actor?.esDeCentro) {
+  if (actor?.esFuncionario) {
     response.status(403).json({
+      success: false,
       message: 'No tienes permiso para listar funcionarios de toda la red',
     })
     return true

@@ -230,24 +230,33 @@ export default class ValidacionVotoController {
       })
 
       // 9. Enviar email con OTP
-      // Limpiar email para eliminar espacios en blanco (común en datos de Excel)
       const emailLimpio = aprendiz.email?.trim()
+      const remitente =
+        process.env.MAIL_FROM_ADDRESS || process.env.SMTP_FROM_EMAIL || 'noreply@sigeva.com'
+
+      if (!emailLimpio) {
+        return response.status(400).json({
+          message: 'El aprendiz no tiene un correo registrado. No se puede enviar el código OTP.',
+          codigo_error: 'EMAIL_APRENDIZ_VACIO',
+        })
+      }
 
       console.log('🔧 Configuración SMTP:', {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT,
         username: process.env.SMTP_USERNAME,
-        from: process.env.MAIL_FROM_ADDRESS,
+        from: remitente,
         to: emailLimpio,
       })
 
+      let emailEnviado = false
       try {
         console.log(`📧 Intentando enviar email OTP a: ${emailLimpio}`)
 
         await mail.send((message) => {
           message
             .to(emailLimpio)
-            .from(process.env.MAIL_FROM_ADDRESS || 'noreply@sigeva.com')
+            .from(remitente)
             .subject('Código OTP para Votación - SIGEVA').html(`
               <h2>Código OTP para Votación</h2>
               <p>Hola ${aprendiz.nombres} ${aprendiz.apellidos},</p>
@@ -256,6 +265,7 @@ export default class ValidacionVotoController {
             `)
         })
 
+        emailEnviado = true
         console.log(`✅ Email OTP enviado exitosamente a: ${emailLimpio}`)
       } catch (emailError) {
         console.error('❌ Error completo enviando email OTP:', {
@@ -265,13 +275,21 @@ export default class ValidacionVotoController {
           response: emailError.response,
           responseCode: emailError.responseCode,
         })
-        // No fallar la operación si el email falla, pero registrar el error
+      }
+
+      if (!emailEnviado && process.env.NODE_ENV === 'production') {
+        return response.status(500).json({
+          message:
+            'No se pudo enviar el correo con el código. Revisa SMTP en Render (SMTP_HOST, usuario, contraseña y MAIL_FROM_ADDRESS).',
+          codigo_error: 'EMAIL_NO_ENVIADO',
+        })
       }
 
       // Respuesta base
       const responseData: any = {
         otp_generado: true,
         email_enviado_a: emailLimpio,
+        email_enviado: emailEnviado,
         expira_en_minutos: expirationMinutes,
         eleccion: {
           nombre: eleccion.nombre,
