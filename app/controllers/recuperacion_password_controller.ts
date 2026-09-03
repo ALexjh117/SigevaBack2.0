@@ -84,23 +84,15 @@ export default class RecuperacionPasswordController {
         })
       }
 
-      const responseData: Record<string, unknown> = {
-        otp_generado: true,
-        email_enviado_a: cuenta.email,
-        email_enviado: emailEnviado,
-        expira_en_minutos: expirationMinutes,
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        responseData.codigo_otp_temporal = otpCode
-        responseData._desarrollo_nota =
-          'El código OTP se incluye solo en desarrollo. En producción, obtenerlo del email.'
-      }
-
       return response.status(200).json({
         success: true,
         message: 'Código enviado al correo',
-        data: responseData,
+        data: {
+          otp_generado: true,
+          email_enviado_a: cuenta.email,
+          email_enviado: emailEnviado,
+          expira_en_minutos: expirationMinutes,
+        },
       })
     } catch (error) {
       if (error.messages) {

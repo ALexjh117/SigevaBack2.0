@@ -9,6 +9,7 @@ router.put('/api/usuarios/funcionarios/:id', user.actualizarFuncionario)
 router.get('/api/usuarios/funcionarios', user.listarFuncionarios)
 
 router.post('/api/usuarios/admin-sistema', user.crearAdminSistema)
+router.get('/api/usuarios/admin-sistema', user.listarAdminSistema)
 
 // Rutas generales de usuarios (manteniendo las existentes)
 router.post('/api/usuarios/crear', user.crear)

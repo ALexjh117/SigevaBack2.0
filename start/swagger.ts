@@ -2,6 +2,15 @@ import swaggerJSDoc from "swagger-jsdoc"
 import router from "@adonisjs/core/services/router"
 import app from "@adonisjs/core/services/app"
 
+const userIdHeader = {
+  in: "header" as const,
+  name: "x-user-id",
+  required: true,
+  schema: { type: "integer", example: 1 },
+  description:
+    "Id de sesión (login data.id). Alternativa: userId en body o query. Sin JWT. El Administrador elige centro; admin_sistema y Funcionario usan el de su sesión.",
+}
+
 const swaggerDefinition = {
   openapi: "3.0.0",
   info: {
@@ -808,31 +817,46 @@ const swaggerDefinition = {
     // ===== USUARIOS =====
     "/api/usuarios/crear": {
       post: {
-        summary: "Crear nuevo usuario",
+        summary: "Crear usuario (solo Administrador de red)",
         tags: ["Usuarios"],
+        description:
+          "Alta genérica. Solo perfil Administrador. Para mesa usar POST /api/usuarios/funcionarios; para admin de centro POST /api/usuarios/admin-sistema.",
+        parameters: [userIdHeader],
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
                 type: "object",
+                required: ["nombres", "apellidos", "celular", "tipo_documento", "numero_documento", "email", "password", "idperfil"],
                 properties: {
-                  nombre: { type: "string", example: "Admin Usuario" },
-                  email: { type: "string", format: "email", example: "admin@sena.edu.co" },
-                  password: { type: "string", example: "password123" },
-                  rol: { type: "string", example: "administrador" }
+                  nombres: { type: "string", example: "Ana" },
+                  apellidos: { type: "string", example: "López" },
+                  celular: { type: "string", example: "3001234567" },
+                  tipo_documento: { type: "string", example: "CC" },
+                  numero_documento: { type: "string", example: "1234567890" },
+                  email: { type: "string", format: "email", example: "ana.lopez@sena.edu.co" },
+                  password: { type: "string", example: "Clave2026" },
+                  estado: { type: "string", example: "Activo" },
+                  idperfil: { type: "integer", example: 1 },
+                  idcentro_formacion: { type: "integer", example: 2, description: "Obligatorio si el perfil es admin_sistema o Funcionario" }
                 }
               }
             }
           }
         },
-        responses: { "201": { description: "Usuario creado exitosamente" } }
+        responses: {
+          "201": { description: "Usuario creado exitosamente" },
+          "403": { description: "No es Administrador de red" }
+        }
       }
     },
     "/api/usuarios/login": {
       post: {
-        summary: "Login de usuario",
+        summary: "Login de gestión (Administrador, admin_sistema, Funcionario)",
         tags: ["Usuarios"],
+        description:
+          "Misma puerta para los 3 roles de gestión. data.perfil y data.centroFormacion arman el menú. Guardar data.id y mandarlo luego como x-user-id. Inactivo = 401.",
         requestBody: {
           required: true,
           content: {
@@ -849,8 +873,8 @@ const swaggerDefinition = {
           }
         },
         responses: {
-          "200": { description: "Login exitoso" },
-          "401": { description: "Credenciales inválidas" }
+          "200": { description: "Login exitoso. data: id, email, nombres, apellidos, estado, perfil, centroFormacion" },
+          "401": { description: "Usuario no encontrado o inactivo" }
         }
       }
     },
@@ -859,7 +883,7 @@ const swaggerDefinition = {
         summary: "Solicitar código para recuperar contraseña",
         tags: ["Recuperación de contraseña"],
         description:
-          "Busca el correo en usuarios (Administrador, admin_sistema, Funcionario) y en aprendiz. Genera un OTP de 6 caracteres, lo envía por email y caduca en OTP_EXPIRATION_MINUTES (default 5). En desarrollo la respuesta incluye codigo_otp_temporal.",
+          "Busca el correo en usuarios (Administrador, admin_sistema, Funcionario) y en aprendiz. Genera un OTP de 6 caracteres, lo envía por email y caduca en OTP_EXPIRATION_MINUTES (default 5). El código no viaja en el JSON: solo en el correo.",
         requestBody: {
           required: true,
           content: {
@@ -952,17 +976,136 @@ const swaggerDefinition = {
     },
     "/api/usuarios/{id}": {
       put: {
-        summary: "Actualizar usuario",
+        summary: "Actualizar usuario (solo Administrador de red)",
         tags: ["Usuarios"],
-        parameters: [{ in: "path", name: "id", required: true, schema: { type: "integer" } }],
+        parameters: [
+          userIdHeader,
+          { in: "path", name: "id", required: true, schema: { type: "integer" } }
+        ],
         responses: { "200": { description: "Usuario actualizado exitosamente" } }
       }
     },
+    "/api/usuarios/admin-sistema": {
+      post: {
+        summary: "Crear admin de centro (admin_sistema)",
+        tags: ["Usuarios"],
+        description:
+          "Solo el Administrador de red. Un admin_sistema por centro (409 si ya existe). idcentro_formacion obligatorio. El nuevo usuario entra por POST /api/usuarios/login.",
+        parameters: [userIdHeader],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["nombres", "apellidos", "celular", "tipo_documento", "numero_documento", "email", "password", "idcentro_formacion"],
+                properties: {
+                  nombres: { type: "string", example: "Carlos" },
+                  apellidos: { type: "string", example: "Ruiz" },
+                  celular: { type: "string", example: "3001112233" },
+                  tipo_documento: { type: "string", example: "CC" },
+                  numero_documento: { type: "string", example: "1098765432" },
+                  email: { type: "string", format: "email", example: "admin.centro@sena.edu.co" },
+                  password: { type: "string", example: "AdminCentro2026" },
+                  idcentro_formacion: { type: "integer", example: 2 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "201": { description: "admin_sistema creado. data.perfil = admin_sistema" },
+          "400": { description: "Faltan campos o el centro no existe" },
+          "403": { description: "No es Administrador de red" },
+          "409": { description: "Ese centro ya tiene un admin_sistema" }
+        }
+      },
+      get: {
+        summary: "Listar admin_sistema de toda la red",
+        tags: ["Usuarios"],
+        description: "Solo Administrador de red. Combo de sedes: GET /api/centrosFormacion/obtiene con el mismo x-user-id.",
+        parameters: [userIdHeader],
+        responses: {
+          "200": { description: "Lista de admin_sistema con centroFormacion" },
+          "403": { description: "No es Administrador de red" }
+        }
+      }
+    },
     "/api/usuarios/funcionarios": {
+      post: {
+        summary: "Crear funcionario de un centro",
+        tags: ["Usuarios"],
+        description:
+          "Administrador de red: debe enviar idcentro_formacion (elige la sede). admin_sistema: el centro sale de la sesión; si manda otro id = 403. Funcionario de mesa = 403 (no crea pares).",
+        parameters: [userIdHeader],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["nombres", "apellidos", "celular", "tipo_documento", "numero_documento", "email", "password"],
+                properties: {
+                  nombres: { type: "string", example: "Lucía" },
+                  apellidos: { type: "string", example: "Gómez" },
+                  celular: { type: "string", example: "3002223344" },
+                  tipo_documento: { type: "string", example: "CC" },
+                  numero_documento: { type: "string", example: "1087654321" },
+                  email: { type: "string", format: "email", example: "lucia.gomez@sena.edu.co" },
+                  password: { type: "string", example: "Mesa2026" },
+                  idcentro_formacion: {
+                    type: "integer",
+                    example: 2,
+                    description: "Obligatorio para Administrador. Ignorado (sesión) para admin_sistema."
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "201": { description: "Funcionario creado. data.perfil = Funcionario" },
+          "400": { description: "Faltan campos, falta centro (admin red) o el centro no existe" },
+          "403": { description: "Funcionario de mesa, o admin_sistema eligiendo otra sede" }
+        }
+      },
       get: {
         summary: "Listar funcionarios",
         tags: ["Usuarios"],
+        description:
+          "Administrador: toda la red. admin_sistema: solo los de SU centro. Funcionario de mesa: 403.",
+        parameters: [userIdHeader],
         responses: { "200": { description: "Funcionarios obtenidos exitosamente" } }
+      }
+    },
+    "/api/usuarios/funcionarios/{id}": {
+      put: {
+        summary: "Actualizar funcionario (inactivar / reasignar centro)",
+        tags: ["Usuarios"],
+        description:
+          "Administrador puede inactivar y reasignar de centro. admin_sistema solo opera los de SU sede y no puede reasignar a otra. Funcionario de mesa: 403.",
+        parameters: [
+          userIdHeader,
+          { in: "path", name: "id", required: true, schema: { type: "integer" } }
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  email: { type: "string", format: "email" },
+                  estado: { type: "string", enum: ["Activo", "Inactivo"], example: "Inactivo" },
+                  idcentro_formacion: { type: "integer", description: "Solo Administrador de red" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Funcionario actualizado" },
+          "403": { description: "Centro ajeno o reasignación no permitida" }
+        }
       }
     },
 
@@ -1013,20 +1156,36 @@ const swaggerDefinition = {
     // ===== IMPORTACIÓN =====
     "/api/aprendices/importarExcel": {
       post: {
-        summary: "Importar aprendices desde Excel",
+        summary: "Importar aprendices desde Excel Sofia Plus",
         tags: ["Importación"],
-        description: "Importa una lista de aprendices desde un archivo Excel",
+        description:
+          "Campo de archivo: excel (no 'archivo'). Administrador de red: centroFormacionId obligatorio (elige la sede). admin_sistema y Funcionario: el centro es el de la sesión; otro id = 403. Header x-user-id o campo userId.",
+        parameters: [userIdHeader],
         requestBody: {
           required: true,
           content: {
             "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["excel"],
                 properties: {
-                  archivo: {
+                  excel: {
                     type: "string",
                     format: "binary",
-                    description: "Archivo Excel con datos de aprendices"
+                    description: "Reporte de Aprendices de Sofia Plus, sin cambiar el formato. C2 = ficha - programa."
+                  },
+                  centroFormacionId: {
+                    type: "integer",
+                    example: 2,
+                    description: "Obligatorio para Administrador. Prohibido (otra sede) para admin_sistema/Funcionario."
+                  },
+                  userId: {
+                    type: "integer",
+                    description: "Alternativa a x-user-id"
+                  },
+                  updateIfExists: {
+                    type: "boolean",
+                    example: true
                   }
                 }
               }
@@ -1034,8 +1193,9 @@ const swaggerDefinition = {
           }
         },
         responses: {
-          "200": { description: "Aprendices importados exitosamente" },
-          "400": { description: "Error en el formato del archivo" }
+          "200": { description: "Importación procesada (inserted, updated, skipped, centroFormacionId, processed)" },
+          "400": { description: "Falta userId, falta excel, falta centroFormacionId (admin) o Excel ilegible" },
+          "403": { description: "Rol sin permiso o intento de importar en otro centro" }
         }
       }
     }
