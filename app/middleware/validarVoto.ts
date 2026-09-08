@@ -1,16 +1,23 @@
 // app/Middleware/ValidarVotoUnico.ts
 import { HttpContext } from '@adonisjs/core/http'
 import Votoxcandidato from '#models/votoxcandidato'
+import { idAprendizDeLaPeticion } from '#services/auth_jwt'
 
 export default class ValidarVotoUnico {
   public async handle({ request, response }: HttpContext, next: () => Promise<void>) {
-    // 1. Extraer datos del body
-    const idAprendiz = request.input('idaprendiz')
-    const idEleccion = request.input('ideleccion') 
+    const idAprendiz = idAprendizDeLaPeticion(request)
+    const idEleccion = request.input('ideleccion')
 
-    if (!idAprendiz || !idEleccion) {
+    if (!idAprendiz) {
+      return response.status(403).json({
+        success: false,
+        message: 'Inicia sesión como aprendiz para votar',
+      })
+    }
+
+    if (!idEleccion) {
       return response.status(200).json({
-        message: 'Debes enviar idaprendiz e ideleccion en la petición',
+        message: 'Debes enviar ideleccion en la petición',
       })
     }
 

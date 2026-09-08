@@ -3,6 +3,7 @@ import vine from '@vinejs/vine'
 import { nanoid } from 'nanoid'
 import bcrypt from 'bcrypt'
 import mail from '@adonisjs/mail/services/main'
+import { remitenteCorreo } from '#services/mail_from'
 import RecuperacionPassword from '#models/recuperacion_password'
 import Aprendiz from '#models/aprendiz'
 import Usuario from '#models/usuario'
@@ -52,12 +53,21 @@ export default class RecuperacionPasswordController {
         idReferencia: cuenta.id,
       })
 
+      const remitente = remitenteCorreo()
+      if (!remitente.address) {
+        return response.status(500).json({
+          success: false,
+          message: 'Falta el remitente de correo (SMTP_FROM_EMAIL o SMTP_USERNAME).',
+          codigo_error: 'EMAIL_REMITENTE_VACIO',
+        })
+      }
+
       let emailEnviado = false
       try {
         await mail.send((message) => {
           message
             .to(cuenta.email)
-          .from('onboarding@resend.dev')
+            .from(remitente.address, remitente.name)
             .subject('Código para recuperar tu contraseña - SIGEVA').html(`
               <h2>Recuperar contraseña</h2>
               <p>Hola ${cuenta.nombres} ${cuenta.apellidos},</p>

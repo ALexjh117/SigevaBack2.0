@@ -4,6 +4,8 @@ import vine from '@vinejs/vine'
 import { nanoid } from 'nanoid'
 import { DateTime } from 'luxon'
 import mail from '@adonisjs/mail/services/main'
+import { remitenteCorreo } from '#services/mail_from'
+import { idAprendizDeLaPeticion, leerSesion } from '#services/auth_jwt'
 
 export default class ValidacionVotoController {
   /**
@@ -65,17 +67,24 @@ export default class ValidacionVotoController {
       // Validación de datos de entrada
       const validator = vine.compile(
         vine.object({
-          aprendiz_idaprendiz: vine.number().positive(),
+          aprendiz_idaprendiz: vine.number().positive().optional(),
           elecciones_ideleccion: vine.number().positive(),
         })
       )
 
       const data = await request.validateUsing(validator)
+      const aprendizId = idAprendizDeLaPeticion(request)
+      if (!aprendizId) {
+        return response.status(403).json({
+          message: 'Inicia sesión como aprendiz para votar',
+          codigo_error: 'NO_AUTENTICADO_APRENDIZ',
+        })
+      }
 
       // 1. Verificar que el aprendiz existe y está activo
       const aprendiz = await (await import('#models/aprendiz')).default
         .query()
-        .where('idaprendiz', data.aprendiz_idaprendiz)
+        .where('idaprendiz', aprendizId)
         .preload('centro_formacion')
         .first()
 
@@ -191,7 +200,7 @@ export default class ValidacionVotoController {
 
       // 6. Verificar que el aprendiz no haya completado ya su voto en esta elección
       const yaVoto = await ValidacionVoto.query()
-        .where('aprendiz_idaprendiz', data.aprendiz_idaprendiz)
+        .where('aprendiz_idaprendiz', aprendizId)
         .where('elecciones_ideleccion', data.elecciones_ideleccion)
         .where('codigo', 'like', 'VOTED_%') // Solo códigos que indican voto completado
         .first()
@@ -212,7 +221,7 @@ export default class ValidacionVotoController {
       const tiempoLimite = DateTime.now().minus({ minutes: expirationMinutes })
 
       await ValidacionVoto.query()
-        .where('aprendiz_idaprendiz', data.aprendiz_idaprendiz)
+        .where('aprendiz_idaprendiz', aprendizId)
         .where('elecciones_ideleccion', data.elecciones_ideleccion)
         .where('created_at', '<', tiempoLimite.toSQL())
         .where('codigo', 'not like', 'VOTED_%')
@@ -225,13 +234,13 @@ export default class ValidacionVotoController {
       // Crear registro temporal de validación con OTP (SIN candidato_id aún)
       await ValidacionVoto.create({
         codigo: `${otpCode}`,
-        aprendiz_idaprendiz: data.aprendiz_idaprendiz,
+        aprendiz_idaprendiz: aprendizId,
         elecciones_ideleccion: data.elecciones_ideleccion,
       })
 
       // 9. Enviar email con OTP
       const emailLimpio = aprendiz.email?.trim()
-      const remitente = 'onboarding@resend.dev'
+      const remitente = remitenteCorreo()
 
       if (!emailLimpio) {
         return response.status(400).json({
@@ -240,11 +249,17 @@ export default class ValidacionVotoController {
         })
       }
 
-      console.log('🔧 Configuración SMTP:', {
+      if (!remitente.address) {
+        return response.status(500).json({
+          message: 'Falta el remitente de correo (SMTP_FROM_EMAIL o SMTP_USERNAME).',
+          codigo_error: 'EMAIL_REMITENTE_VACIO',
+        })
+      }
+
+      console.log('🔧 Configuración correo OTP:', {
+        mailer: process.env.MAIL_MAILER || 'smtp',
         host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        username: process.env.SMTP_USERNAME,
-        from: remitente,
+        from: remitente.address,
         to: emailLimpio,
       })
 
@@ -255,7 +270,7 @@ export default class ValidacionVotoController {
         await mail.send((message) => {
           message
             .to(emailLimpio)
-            .from(remitente)
+            .from(remitente.address, remitente.name)
             .subject('Código OTP para Votación - SIGEVA').html(`
               <h2>Código OTP para Votación</h2>
               <p>Hola ${aprendiz.nombres} ${aprendiz.apellidos},</p>
@@ -266,20 +281,20 @@ export default class ValidacionVotoController {
 
         emailEnviado = true
         console.log(`✅ Email OTP enviado exitosamente a: ${emailLimpio}`)
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error('❌ Error completo enviando email OTP:', {
-          error: emailError.message,
-          code: emailError.code,
-          command: emailError.command,
-          response: emailError.response,
-          responseCode: emailError.responseCode,
+          error: emailError?.message,
+          code: emailError?.code,
+          cause: emailError?.cause,
+          response: emailError?.response,
+          responseCode: emailError?.responseCode,
         })
       }
 
       if (!emailEnviado && process.env.NODE_ENV === 'production') {
         return response.status(500).json({
           message:
-            'No se pudo enviar el correo con el código. Revisa SMTP en Render (SMTP_HOST, usuario, contraseña y MAIL_FROM_ADDRESS).',
+            'No se pudo enviar el correo con el código. Revisa en Render MAIL_MAILER=smtp y las variables SMTP_HOST, SMTP_PORT, SMTP_USERNAME y SMTP_PASSWORD (contraseña de aplicación de Gmail).',
           codigo_error: 'EMAIL_NO_ENVIADO',
         })
       }
@@ -334,11 +349,19 @@ export default class ValidacionVotoController {
       )
 
       const data = await request.validateUsing(validator)
+      const sesion = leerSesion(request)
+      if (sesion?.typ !== 'aprendiz') {
+        return response.status(403).json({
+          success: false,
+          message: 'Inicia sesión como aprendiz para votar',
+        })
+      }
       console.log('✅ Datos validados:', data)
 
       // 1. Buscar la validación temporal solo con el código OTP
       const validacionTemporal = await ValidacionVoto.query()
         .where('codigo', data.codigo_otp)
+        .andWhere('aprendiz_idaprendiz', sesion.sub)
         .first()
 
       if (!validacionTemporal) {

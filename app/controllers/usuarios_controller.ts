@@ -15,6 +15,7 @@ import {
   perfilExigeCentro,
   resolverActor,
 } from '#services/actor_sesion'
+import { emitirCookieAuth } from '#services/auth_jwt'
 
 export default class UsuariosController {
   async crear({ request, response }: HttpContext) {
@@ -88,7 +89,7 @@ export default class UsuariosController {
       }
 
       const perfil = await Perfil.findBy('idperfil', usuario.idperfil)
-      const nombrePerfil = perfil?.perfil
+      const nombrePerfil = perfil?.perfil ?? ''
 
       if (perfilExigeCentro(nombrePerfil) && !usuario.idcentro_formacion) {
         return response.status(400).json({
@@ -96,6 +97,12 @@ export default class UsuariosController {
           message: 'Tu usuario no tiene centro de formación asignado',
         })
       }
+
+      emitirCookieAuth(response, {
+        sub: usuario.idusuarios,
+        typ: 'usuario',
+        perfil: nombrePerfil,
+      })
 
       return response.status(200).json({
         success: true,

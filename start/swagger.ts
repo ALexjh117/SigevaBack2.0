@@ -2,13 +2,13 @@ import swaggerJSDoc from "swagger-jsdoc"
 import router from "@adonisjs/core/services/router"
 import app from "@adonisjs/core/services/app"
 
-const userIdHeader = {
-  in: "header" as const,
-  name: "x-user-id",
+const cookieAuth = {
+  in: "cookie" as const,
+  name: "sigeva_token",
   required: true,
-  schema: { type: "integer", example: 1 },
+  schema: { type: "string" },
   description:
-    "Id de sesión (login data.id). Alternativa: userId en body o query. Sin JWT. El Administrador elige centro; admin_sistema y Funcionario usan el de su sesión.",
+    "JWT HttpOnly. Lo setea el login y el navegador lo manda solo (withCredentials). Ya no uses x-user-id.",
 }
 
 const swaggerDefinition = {
@@ -28,6 +28,16 @@ const swaggerDefinition = {
       description: "Servidor de desarrollo"
     },
   ],
+  components: {
+    securitySchemes: {
+      cookieAuth: {
+        type: "apiKey",
+        in: "cookie",
+        name: "sigeva_token",
+      },
+    },
+  },
+  security: [{ cookieAuth: [] }],
   tags: [
     {
       name: "Aprendices",
@@ -204,7 +214,9 @@ const swaggerDefinition = {
       post: {
         summary: "Login de aprendiz",
         tags: ["Aprendices"],
-        description: "Autenticación de aprendiz en el sistema",
+        description:
+          "JWT en cookie HttpOnly sigeva_token. Axios: withCredentials: true. No uses localStorage para el token.",
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -821,7 +833,7 @@ const swaggerDefinition = {
         tags: ["Usuarios"],
         description:
           "Alta genérica. Solo perfil Administrador. Para mesa usar POST /api/usuarios/funcionarios; para admin de centro POST /api/usuarios/admin-sistema.",
-        parameters: [userIdHeader],
+        parameters: [cookieAuth],
         requestBody: {
           required: true,
           content: {
@@ -856,7 +868,8 @@ const swaggerDefinition = {
         summary: "Login de gestión (Administrador, admin_sistema, Funcionario)",
         tags: ["Usuarios"],
         description:
-          "Misma puerta para los 3 roles de gestión. data.perfil y data.centroFormacion arman el menú. Guardar data.id y mandarlo luego como x-user-id. Inactivo = 401.",
+          "Misma puerta para los 3 roles de gestión. data.perfil y data.centroFormacion arman el menú. El JWT queda en cookie HttpOnly (sigeva_token); no lo guardes en localStorage. Axios: withCredentials: true. Inactivo = 401.",
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -873,8 +886,30 @@ const swaggerDefinition = {
           }
         },
         responses: {
-          "200": { description: "Login exitoso. data: id, email, nombres, apellidos, estado, perfil, centroFormacion" },
+          "200": { description: "Login exitoso. Set-Cookie: sigeva_token (HttpOnly). data: id, email, nombres, apellidos, estado, perfil, centroFormacion" },
           "401": { description: "Usuario no encontrado o inactivo" }
+        }
+      }
+    },
+    "/api/auth/me": {
+      get: {
+        summary: "Sesión actual (cookie HttpOnly)",
+        tags: ["Usuarios"],
+        description: "Lee el JWT de la cookie. Úsalo al recargar React porque el token no está en localStorage.",
+        responses: {
+          "200": { description: "data.tipo usuario o aprendiz, más perfil y centro" },
+          "401": { description: "Sin cookie o sesión inválida" }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      post: {
+        summary: "Cerrar sesión",
+        tags: ["Usuarios"],
+        description: "Borra la cookie sigeva_token. No requiere JWT válido.",
+        security: [],
+        responses: {
+          "200": { description: "Cookie eliminada" }
         }
       }
     },
@@ -884,6 +919,7 @@ const swaggerDefinition = {
         tags: ["Recuperación de contraseña"],
         description:
           "Busca el correo en usuarios (Administrador, admin_sistema, Funcionario) y en aprendiz. Genera un OTP de 6 caracteres, lo envía por email y caduca en OTP_EXPIRATION_MINUTES (default 5). El código no viaja en el JSON: solo en el correo.",
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -932,6 +968,7 @@ const swaggerDefinition = {
         tags: ["Recuperación de contraseña"],
         description:
           "Valida el OTP (mismo correo + código, no expirado) y actualiza el password con bcrypt en usuarios o aprendiz. data.perfil y data.login indican a qué login redirigir.",
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -979,7 +1016,7 @@ const swaggerDefinition = {
         summary: "Actualizar usuario (solo Administrador de red)",
         tags: ["Usuarios"],
         parameters: [
-          userIdHeader,
+          cookieAuth,
           { in: "path", name: "id", required: true, schema: { type: "integer" } }
         ],
         responses: { "200": { description: "Usuario actualizado exitosamente" } }
@@ -991,7 +1028,7 @@ const swaggerDefinition = {
         tags: ["Usuarios"],
         description:
           "Solo el Administrador de red. Un admin_sistema por centro (409 si ya existe). idcentro_formacion obligatorio. El nuevo usuario entra por POST /api/usuarios/login.",
-        parameters: [userIdHeader],
+        parameters: [cookieAuth],
         requestBody: {
           required: true,
           content: {
@@ -1023,8 +1060,8 @@ const swaggerDefinition = {
       get: {
         summary: "Listar admin_sistema de toda la red",
         tags: ["Usuarios"],
-        description: "Solo Administrador de red. Combo de sedes: GET /api/centrosFormacion/obtiene con el mismo x-user-id.",
-        parameters: [userIdHeader],
+        description: "Solo Administrador de red. Combo de sedes: GET /api/centrosFormacion/obtiene con la misma cookie de sesión.",
+        parameters: [cookieAuth],
         responses: {
           "200": { description: "Lista de admin_sistema con centroFormacion" },
           "403": { description: "No es Administrador de red" }
@@ -1037,7 +1074,7 @@ const swaggerDefinition = {
         tags: ["Usuarios"],
         description:
           "Administrador de red: debe enviar idcentro_formacion (elige la sede). admin_sistema: el centro sale de la sesión; si manda otro id = 403. Funcionario de mesa = 403 (no crea pares).",
-        parameters: [userIdHeader],
+        parameters: [cookieAuth],
         requestBody: {
           required: true,
           content: {
@@ -1074,7 +1111,7 @@ const swaggerDefinition = {
         tags: ["Usuarios"],
         description:
           "Administrador: toda la red. admin_sistema: solo los de SU centro. Funcionario de mesa: 403.",
-        parameters: [userIdHeader],
+        parameters: [cookieAuth],
         responses: { "200": { description: "Funcionarios obtenidos exitosamente" } }
       }
     },
@@ -1085,7 +1122,7 @@ const swaggerDefinition = {
         description:
           "Administrador puede inactivar y reasignar de centro. admin_sistema solo opera los de SU sede y no puede reasignar a otra. Funcionario de mesa: 403.",
         parameters: [
-          userIdHeader,
+          cookieAuth,
           { in: "path", name: "id", required: true, schema: { type: "integer" } }
         ],
         requestBody: {
@@ -1159,8 +1196,8 @@ const swaggerDefinition = {
         summary: "Importar aprendices desde Excel Sofia Plus",
         tags: ["Importación"],
         description:
-          "Campo de archivo: excel (no 'archivo'). Administrador de red: centroFormacionId obligatorio (elige la sede). admin_sistema y Funcionario: el centro es el de la sesión; otro id = 403. Header x-user-id o campo userId.",
-        parameters: [userIdHeader],
+          "Campo de archivo: excel (no 'archivo'). Administrador de red: centroFormacionId obligatorio (elige la sede). admin_sistema y Funcionario: el centro es el de la sesión JWT; otro id = 403. Cookie HttpOnly sigeva_token.",
+        parameters: [cookieAuth],
         requestBody: {
           required: true,
           content: {
@@ -1179,10 +1216,6 @@ const swaggerDefinition = {
                     example: 2,
                     description: "Obligatorio para Administrador. Prohibido (otra sede) para admin_sistema/Funcionario."
                   },
-                  userId: {
-                    type: "integer",
-                    description: "Alternativa a x-user-id"
-                  },
                   updateIfExists: {
                     type: "boolean",
                     example: true
@@ -1194,7 +1227,7 @@ const swaggerDefinition = {
         },
         responses: {
           "200": { description: "Importación procesada (inserted, updated, skipped, centroFormacionId, processed)" },
-          "400": { description: "Falta userId, falta excel, falta centroFormacionId (admin) o Excel ilegible" },
+          "400": { description: "Falta excel, falta centroFormacionId (admin) o Excel ilegible" },
           "403": { description: "Rol sin permiso o intento de importar en otro centro" }
         }
       }
