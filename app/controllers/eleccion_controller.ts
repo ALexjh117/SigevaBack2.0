@@ -5,13 +5,21 @@ import type { HttpContext } from '@adonisjs/core/http'
 import Eleccione from '#models/eleccione'
 import EleccionService from '#services/EleccionesServices'
 import FiltrarService from '#services/FiltroJorElCen'
+import {
+  bloquearSiCentroAjeno,
+  bloquearTableroRed,
+  resolverActor,
+} from '#services/actor_sesion'
 
 const eleccionService = new EleccionService()
 const filtroElecciones = new FiltrarService()
 
 export default class EleccionControler {
-  async traerEleccion({ response }: HttpContext) {
+  async traerEleccion({ request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearTableroRed(actor, response)) return
+
       const elecciones = await Eleccione.all()
       return response.status(200).json({ message: 'Elecciones traidas con exito', elecciones })
     } catch (error) {
@@ -21,8 +29,11 @@ export default class EleccionControler {
     }
   }
 
-  async traerEleccionesActivas({ response }: HttpContext) {
+  async traerEleccionesActivas({ request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearTableroRed(actor, response)) return
+
       const eleccionesActivas = await eleccionService.eleccionesAactivas()
       return response
         .status(200)
@@ -36,7 +47,6 @@ export default class EleccionControler {
     try {
       const dataEleccion = request.only([
         'idcentro_formacion',
-        'jornada',
         'fecha_inicio',
         'fecha_fin',
         'hora_inicio',
@@ -44,12 +54,10 @@ export default class EleccionControler {
         'nombre',
       ])
 
-      if (
-        dataEleccion.jornada != 'Mañana' &&
-        dataEleccion.jornada != 'Tarde' &&
-        dataEleccion.jornada != 'Noche'
-      ) {
-        return response.status(400).json({ message: 'La jornada no es válida' })
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, dataEleccion.idcentro_formacion, response)) return
+      if (actor?.esDeCentro) {
+        dataEleccion.idcentro_formacion = actor.idcentro
       }
 
       if (!dataEleccion.idcentro_formacion) {
@@ -80,7 +88,7 @@ export default class EleccionControler {
           .json({ message: 'La Hora de inicio no debe ser mayor a la Hora fin' })
       }
 
-      const eleccion = await Eleccione.create(dataEleccion)
+      const eleccion = await Eleccione.create({ ...dataEleccion, jornada: null })
       return response.status(201).json({ message: 'Eleccion creada con exito', eleccion })
     } catch (error) {
       return response
@@ -98,7 +106,7 @@ export default class EleccionControler {
 
       const dataEleccion = request.only([
         'idcentro_formacion',
-        'jornada',
+       
         'fecha_inicio',
         'fecha_fin',
         'hora_inicio',
@@ -106,13 +114,16 @@ export default class EleccionControler {
         'nombre',
       ])
 
-      if (
-        dataEleccion.jornada != 'Mañana' &&
-        dataEleccion.jornada != 'Tarde' &&
-        dataEleccion.jornada != 'Noche'
-      ) {
-        return response.status(400).json({ message: 'La jornada no es válida' })
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, eleccion.idcentro_formacion, response)) return
+      if (bloquearSiCentroAjeno(actor, dataEleccion.idcentro_formacion, response)) return
+      if (actor?.esDeCentro) {
+        dataEleccion.idcentro_formacion = actor.idcentro
       }
+
+     if(!dataEleccion.idcentro_formacion){
+      return response.status(400).json({ message: 'El campo del centro de formacion es obligatorio' })
+     }
 
       //validaciones fechas inicio y fin
       if (!dataEleccion.fecha_inicio || !dataEleccion.fecha_fin) {
@@ -138,7 +149,7 @@ export default class EleccionControler {
           .json({ message: 'La Hora de inicio no debe ser mayor a la Hora fin' })
       }
 
-      eleccion.merge(dataEleccion)
+      eleccion.merge({ ...dataEleccion, jornada: null })
       await eleccion.save()
 
       return response.status(200).json({ message: 'Eleccion actualizada con exito', eleccion })
@@ -149,8 +160,11 @@ export default class EleccionControler {
     }
   }
 
-  async traerPorCentroFormacion({ response, params }: HttpContext) {
+  async traerPorCentroFormacion({ request, response, params }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, params.idCentro_formacion, response)) return
+
       const elecciones = await Eleccione.query()
         .where('idcentro_formacion', params.idCentro_formacion)
         .preload('centro')
@@ -204,10 +218,8 @@ export default class EleccionControler {
             fechaInicio: eleccion.fecha_inicio,
             fechaFin: eleccion.fecha_fin,
             centro: eleccion.centro.centro_formacioncol,
-            jornada: eleccion.jornada,
             horaInicio: eleccion.hora_inicio,
             horaFin: eleccion.hora_fin,
-            //jornada: primerCandidato?.aprendiz?.grupo?.jornada ?? null,
           })
         }
       })
@@ -224,8 +236,11 @@ export default class EleccionControler {
     }
   }
 
-  async traerPorCentroFormacionTodas({ response, params }: HttpContext) {
+  async traerPorCentroFormacionTodas({ request, response, params }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, params.idcentro_formacion, response)) return
+
       const elecciones = await Eleccione.query()
         .where('idcentro_formacion', params.idcentro_formacion)
         .preload('centro')
@@ -244,7 +259,6 @@ export default class EleccionControler {
           fechaInicio: eleccion.fecha_inicio,
           fechaFin: eleccion.fecha_fin,
           centro: eleccion.centro.centro_formacioncol,
-          jornada: eleccion.jornada,
           horaInicio: eleccion.hora_inicio,
           horaFin: eleccion.hora_fin,
         })
@@ -265,16 +279,22 @@ export default class EleccionControler {
   async traerPorJornada({ request, response }: HttpContext) {
     try {
       const { jornada } = request.qs()
+      const actor = await resolverActor(request)
+      if (actor?.esDeCentro && !actor.idcentro) {
+        return response.status(400).json({ message: 'Tu usuario no tiene centro de formación asignado' })
+      }
 
-      const elecciones = await Eleccione.query().preload('candidato', (candidatoQuery) => {
-        candidatoQuery.preload('aprendiz', (aprendizQuery) => {
-          aprendizQuery.preload('grupo', (grupoQuery) => {
+      const query = Eleccione.query()
+      if (actor?.esDeCentro && actor.idcentro) {
+        query.where('idcentro_formacion', actor.idcentro)
+      }
+
+      const elecciones = await query.preload('candidato', (q) => {
             if (jornada) {
-              grupoQuery.where('jornada', jornada)
+              q.where('jornada', jornada)
             }
-          })
+            q.preload('aprendiz')
         })
-      })
       return response.status(200).json({ message: 'Elecciones filtradas por jornada', elecciones })
     } catch (error) {
       return response.status(500).json({
@@ -287,8 +307,11 @@ export default class EleccionControler {
   async traerFiltrado({ request, response }: HttpContext) {
     try {
       const { idCentro_formacion, jornada } = request.qs()
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, idCentro_formacion, response)) return
+      const centro = actor?.esDeCentro ? actor.idcentro : idCentro_formacion
       const eleccionesFiltradas = await filtroElecciones.filtroElecciones(
-        idCentro_formacion,
+        centro,
         jornada
       )
       return response.status(200).json({
@@ -302,8 +325,11 @@ export default class EleccionControler {
     }
   }
 
-  public async listarEleccionesPorCentroF({ params, response }: HttpContext) {
+  public async listarEleccionesPorCentroF({ params, request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearSiCentroAjeno(actor, params.idcentro_formacion, response)) return
+
       const elecciones = await eleccionService.listarPorCentro(params.idcentro_formacion)
 
       return response.ok({

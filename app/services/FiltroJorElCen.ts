@@ -1,8 +1,6 @@
 /* eslint-disable @unicorn/filename-case */
 /* eslint-disable prettier/prettier */
-/* eslint-disable @unicorn/filename-case */
 import Eleccione from "#models/eleccione";
-
 
 export default class FiltrarService {
     [x: string]: any;
@@ -17,12 +15,12 @@ export default class FiltrarService {
         .where('fecha_inicio', '<=', filterToday)
         .where('fecha_fin', '>=', filterToday)
         .preload('candidato',  (consultarCandidatos) => {
-            consultarCandidatos.preload('aprendiz', (consultarAprendiz)=> {
-                consultarAprendiz.preload('grupo', (consultarGrupo) => {
-                    if(jornada) consultarGrupo.where('jornada', jornada)
-                })
-            })
+            if (jornada) {
+                consultarCandidatos.where('jornada', jornada)
+            }
+            consultarCandidatos.preload('aprendiz')
         })
+
         return elecciones
     }
 }

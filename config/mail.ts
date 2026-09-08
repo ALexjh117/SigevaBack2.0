@@ -1,24 +1,31 @@
 import { defineConfig, transports } from '@adonisjs/mail'
 import env from '#start/env'
+import { remitenteCorreo } from '#services/mail_from'
+
+const remitente = remitenteCorreo()
 
 const mailConfig = defineConfig({
-  default: 'smtp',
+  default: env.get('MAIL_MAILER') || 'smtp',
 
-  /**
-   * The mailers object can be used to configure multiple mailers
-   * each using a different transport or same transport with different
-   * options.
-   */
+  from: {
+    address: remitente.address,
+    name: remitente.name,
+  },
+
   mailers: {
     smtp: transports.smtp({
-      host: env.get('SMTP_HOST', 'localhost'),
-      port: env.get('SMTP_PORT', 587),
+      host: env.get('SMTP_HOST') || 'smtp.gmail.com',
+      port: env.get('SMTP_PORT') || 587,
+      secure: env.get('SMTP_SECURE') ?? false,
       auth: {
         type: 'login',
-        user: env.get('SMTP_USERNAME', ''),
-        pass: env.get('SMTP_PASSWORD', ''),
+        user: env.get('SMTP_USERNAME') || '',
+        pass: (env.get('SMTP_PASSWORD') || '').replace(/\s/g, ''),
       },
-      secure: env.get('SMTP_SECURE') || false, // true for 465, false for other ports
+    }),
+    resend: transports.resend({
+      baseUrl: 'https://api.resend.com',
+      key: env.get('RESEND_API_KEY') || '',
     }),
   },
 })

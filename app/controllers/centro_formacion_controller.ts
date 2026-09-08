@@ -2,13 +2,19 @@ import type { HttpContext } from '@adonisjs/core/http'
 import CentroFormacion from '#models/centro_formacion'
 import Regional from '#models/regionale'
 import Municipio from '#models/municipio'
+import { resolverActor, bloquearTableroRed } from '#services/actor_sesion'
 
 export default class CentroFormacionController {
   
 
-  async obtiene({ response }: HttpContext) {
+  async obtiene({ request, response }: HttpContext) {
     try {
-      const centro = await CentroFormacion.all()
+      const actor = await resolverActor(request)
+      const query = CentroFormacion.query()
+      if (actor?.esDeCentro && actor.idcentro) {
+        query.where('idcentro_formacion', actor.idcentro)
+      }
+      const centro = await query
       return response.status(200).json({
         success: true,
         data: centro,
@@ -25,6 +31,9 @@ export default class CentroFormacionController {
   // Crear nuevo centro de formación
   async crear({ request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearTableroRed(actor, response)) return
+
       const {
         idregional,
         centro_formacioncol,
@@ -81,11 +90,17 @@ export default class CentroFormacionController {
   }
 
 
-  async obtenerPorRegional ({params, response}:HttpContext){
+  async obtenerPorRegional ({params, request, response}:HttpContext){
     try{
       const {regional} = params;
+      const actor = await resolverActor(request)
 
-      const data = await CentroFormacion.query().where('idregional', regional)
+      const query = CentroFormacion.query().where('idregional', regional)
+      if (actor?.esDeCentro && actor.idcentro) {
+        query.where('idcentro_formacion', actor.idcentro)
+      }
+
+      const data = await query
 
 
       return response.status(200).json({message:'Exito', data})
@@ -111,6 +126,9 @@ export default class CentroFormacionController {
           message: 'Centro de formación no encontrado',
         })
       }
+
+      const actor = await resolverActor(request)
+      if (bloquearTableroRed(actor, response)) return
 
       const {
         idregional,
