@@ -1,5 +1,6 @@
 import { HttpContext } from '@adonisjs/core/http'
 import Votoxcandidato from '#models/votoxcandidato'
+import { idAprendizDeLaPeticion } from '#services/auth_jwt'
 
 
 
@@ -7,8 +8,19 @@ export default class    VotoxcandidatoController {
 
     async crear({ request, response }: HttpContext) {
         try {
-            const data = request.only(['idcandidatos', 'idaprendiz', 'contador'])
-            await Votoxcandidato.create(data)
+            const idaprendiz = idAprendizDeLaPeticion(request)
+            if (!idaprendiz) {
+                return response.status(403).json({
+                    success: false,
+                    mensaje: 'Inicia sesión como aprendiz para votar',
+                })
+            }
+            const data = request.only(['idcandidatos', 'contador'])
+            await Votoxcandidato.create({
+                idcandidatos: data.idcandidatos,
+                contador: data.contador,
+                idaprendiz,
+            })
             return response.status(201).json({ mensaje: "Éxito" })
         } catch (error) {
             return response.status(500).json({ mensaje: "Error", error: error.message })

@@ -11,6 +11,7 @@ import {
   bloquearSiCentroAjeno,
   resolverActor,
 } from '#services/actor_sesion'
+import { emitirCookieAuth } from '#services/auth_jwt'
 
 //contraseña
 import bcrypt from 'bcrypt'
@@ -175,7 +176,7 @@ export default class AprendizsController {
     } catch (error) {
       return response.status(500).send({
         message: 'Error al obtener aprendices',
-        error: error.message,
+        error: error.message
       })
     }
   }
@@ -264,6 +265,12 @@ export default class AprendizsController {
 
       if (!verifyPassword)
         return response.status(401).json({ success: false, message: 'Fallo en la autenticación' })
+
+      emitirCookieAuth(response, {
+        sub: aprendizExist.idaprendiz,
+        typ: 'aprendiz',
+        perfil: aprendizExist.perfil?.perfil ?? 'Aprendiz',
+      })
 
       return response.status(200).json({
         success: true,

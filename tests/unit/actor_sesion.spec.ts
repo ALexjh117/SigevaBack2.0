@@ -112,7 +112,7 @@ test.group('actor_sesion', () => {
 
     const noActor = mockResponse()
     assert.isTrue(bloquearSiNoEsAdministrador(null, noActor as any))
-    assert.equal(noActor.statusCode, 400)
+    assert.equal(noActor.statusCode, 401)
 
     const centro = mockResponse()
     assert.isTrue(bloquearSiNoEsAdministrador(actorDeCentro(1), centro as any))

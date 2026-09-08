@@ -15,6 +15,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),
   PORT: Env.schema.number(),
   APP_KEY: Env.schema.string(),
+  JWT_EXPIRES_SECONDS: Env.schema.number.optional(),
+  AUTH_COOKIE_SAMESITE: Env.schema.enum.optional(['lax', 'none', 'strict'] as const),
   HOST: Env.schema.string({ format: 'host' }),
   LOG_LEVEL: Env.schema.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']),
 
@@ -34,11 +36,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Variables for configuring mail/SMTP
   |----------------------------------------------------------
   */
+  MAIL_MAILER: Env.schema.enum.optional(['smtp', 'resend'] as const),
   SMTP_HOST: Env.schema.string.optional(),
   SMTP_PORT: Env.schema.number.optional(),
   SMTP_USERNAME: Env.schema.string.optional(),
   SMTP_PASSWORD: Env.schema.string.optional(),
   SMTP_SECURE: Env.schema.boolean.optional(),
+  SMTP_FROM_NAME: Env.schema.string.optional(),
+  SMTP_FROM_EMAIL: Env.schema.string.optional(),
   MAIL_FROM_ADDRESS: Env.schema.string.optional(),
   OTP_EXPIRATION_MINUTES: Env.schema.string.optional(),
 
@@ -47,5 +52,5 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Variables for configuring the mail package
   |----------------------------------------------------------
   */
-  RESEND_API_KEY: Env.schema.string()
+  RESEND_API_KEY: Env.schema.string.optional(),
 })

@@ -10,13 +10,13 @@
  * - Administrador: gobierno de la red. Crea admin_sistema y funcionarios
  *   eligiendo el centro. Importa aprendices eligiendo el centro. Ve todo.
  *
- * Fuente del centro: usuarios.idcentro_formacion (sesión).
- * El cliente manda x-user-id o userId (mismo patrón que el import Excel).
- * Sin JWT. Si el cliente manda otro idcentro, se ignora o 403. Nunca filas ajenas.
+ * Fuente del centro: usuarios.idcentro_formacion (sesión JWT en cookie HttpOnly).
+ * Si el cliente manda otro idcentro, se ignora o 403. Nunca filas ajenas.
  */
 import Usuario from '#models/usuario'
 import Perfil from '#models/perfil'
 import type { HttpContext } from '@adonisjs/core/http'
+import { leerSesion } from '#services/auth_jwt'
 
 export const PERFIL_ADMIN_SISTEMA = 'admin_sistema'
 
@@ -82,25 +82,12 @@ export async function centroYaTieneAdminSistema(idcentro: number, exceptUserId?:
   return Boolean(await query.first())
 }
 
-function leerUserId(request: HttpContext['request']): number | null {
-  const raw = request.header('x-user-id') ?? request.input('userId') ?? request.qs().userId
-  if (raw === undefined || raw === null || raw === '') return null
-  const id = Number(raw)
-  return Number.isInteger(id) && id > 0 ? id : null
-}
-
 function centroDeUsuario(usuario: Usuario): number | null {
   const n = Number(usuario.idcentro_formacion)
   return Number.isInteger(n) && n > 0 ? n : null
 }
 
-export async function resolverActor(request: HttpContext['request']): Promise<ActorSesion | null> {
-  const id = leerUserId(request)
-  if (!id) return null
-
-  const usuario = await Usuario.query().where('idusuarios', id).preload('perfil').first()
-  if (!usuario) return null
-
+export function actorDesdeUsuario(usuario: Usuario): ActorSesion {
   const perfil = usuario.perfil?.perfil ?? ''
   return {
     usuario,
@@ -111,6 +98,17 @@ export async function resolverActor(request: HttpContext['request']): Promise<Ac
     esAdministrador: esAdministrador(perfil),
     esDeCentro: esRolDeCentro(perfil),
   }
+}
+
+export async function resolverActor(request: HttpContext['request']): Promise<ActorSesion | null> {
+  const sesion = leerSesion(request)
+  if (!sesion || sesion.typ !== 'usuario') return null
+
+  const usuario = await Usuario.query().where('idusuarios', sesion.sub).preload('perfil').first()
+  if (!usuario) return null
+  if (String(usuario.estado).toLowerCase() !== 'activo') return null
+
+  return actorDesdeUsuario(usuario)
 }
 
 export function esCentroAjeno(actor: ActorSesion | null, idPedido: unknown): boolean {
@@ -159,9 +157,9 @@ export function bloquearSiFaltaActor(
   response: HttpContext['response']
 ): actor is null {
   if (!actor) {
-    response.status(400).json({
+    response.status(401).json({
       success: false,
-      message: 'Falta userId en el body o x-user-id',
+      message: 'No autenticado. Inicia sesión como usuario de gestión',
     })
     return true
   }

@@ -38,11 +38,13 @@ export default class ImportExcelController {
         'motivo'?: string
       }> = []
 
-      // 1) Actor: x-user-id o userId (HU-S2-030). Sin JWT.
       const actor = await resolverActor(request)
       if (!actor) {
         await trx.rollback()
-        return response.badRequest({ success: false, message: 'Falta userId en el body o x-user-id' })
+        return response.unauthorized({
+          success: false,
+          message: 'No autenticado. Inicia sesión como usuario de gestión',
+        })
       }
 
       if (!actor.esDeCentro && !actor.esAdministrador) {
