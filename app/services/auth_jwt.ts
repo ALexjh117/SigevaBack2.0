@@ -63,22 +63,54 @@ export function firmarJwt(claims: { sub: number; typ: AuthTipo; perfil: string }
   return `${data}.${firmarHs256(data)}`
 }
 
-export function verificarJwt(token: string): AuthPayload | null {
+export type JwtDiagnostico =
+  | { ok: true; payload: AuthPayload }
+  | { ok: false; motivo: string; detalle?: Record<string, unknown> }
+
+export function diagnosticarJwt(token: string): JwtDiagnostico {
   const parts = token.split('.')
-  if (parts.length !== 3) return null
+  if (parts.length !== 3) {
+    return {
+      ok: false,
+      motivo: 'formato_invalido',
+      detalle: { partes: parts.length, preview: token.slice(0, 24) },
+    }
+  }
 
   const [header, payload, signature] = parts
-  if (!firmasIguales(signature, firmarHs256(`${header}.${payload}`))) return null
+  if (!firmasIguales(signature, firmarHs256(`${header}.${payload}`))) {
+    return { ok: false, motivo: 'firma_invalida', detalle: { largoToken: token.length } }
+  }
 
   try {
     const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AuthPayload
-    if (!parsed || (parsed.typ !== 'usuario' && parsed.typ !== 'aprendiz')) return null
-    if (!Number.isInteger(parsed.sub) || parsed.sub <= 0) return null
-    if (parsed.exp < Math.floor(Date.now() / 1000)) return null
-    return parsed
-  } catch {
-    return null
+    if (!parsed || (parsed.typ !== 'usuario' && parsed.typ !== 'aprendiz')) {
+      return { ok: false, motivo: 'typ_invalido', detalle: { typ: parsed?.typ } }
+    }
+    if (!Number.isInteger(parsed.sub) || parsed.sub <= 0) {
+      return { ok: false, motivo: 'sub_invalido', detalle: { sub: parsed.sub } }
+    }
+    const ahora = Math.floor(Date.now() / 1000)
+    if (parsed.exp < ahora) {
+      return {
+        ok: false,
+        motivo: 'expirado',
+        detalle: { exp: parsed.exp, ahora, segundosVencido: ahora - parsed.exp },
+      }
+    }
+    return { ok: true, payload: parsed }
+  } catch (error) {
+    return {
+      ok: false,
+      motivo: 'payload_no_parseable',
+      detalle: { error: error instanceof Error ? error.message : String(error) },
+    }
   }
+}
+
+export function verificarJwt(token: string): AuthPayload | null {
+  const resultado = diagnosticarJwt(token)
+  return resultado.ok ? resultado.payload : null
 }
 
 export function opcionesCookieAuth() {
@@ -98,12 +130,60 @@ export function emitirCookieAuth(
   claims: { sub: number; typ: AuthTipo; perfil: string }
 ) {
   const token = firmarJwt(claims)
-  response.plainCookie(AUTH_COOKIE_NAME, token, opcionesCookieAuth())
+  const opciones = opcionesCookieAuth()
+  response.plainCookie(AUTH_COOKIE_NAME, token, opciones)
+  console.log('[AUTH] Cookie JWT emitida', {
+    cookie: AUTH_COOKIE_NAME,
+    sub: claims.sub,
+    typ: claims.typ,
+    perfil: claims.perfil,
+    sameSite: opciones.sameSite,
+    secure: opciones.secure,
+    maxAge: opciones.maxAge,
+    path: opciones.path,
+    httpOnly: opciones.httpOnly,
+    tokenLargo: token.length,
+    tokenPreview: `${token.slice(0, 16)}...`,
+  })
   return token
 }
 
 export function limpiarCookieAuth(response: HttpContext['response']) {
   response.clearCookie(AUTH_COOKIE_NAME, { path: '/' })
+}
+
+export function nombresCookies(request: HttpContext['request']): string[] {
+  const header = request.header('cookie')
+  if (!header) return []
+  return header
+    .split(';')
+    .map((parte) => parte.split('=')[0]?.trim())
+    .filter((nombre): nombre is string => Boolean(nombre))
+}
+
+function tokenDesdeHeaderCookie(request: HttpContext['request']): string | null {
+  const header = request.header('cookie')
+  if (!header) return null
+
+  for (const parte of header.split(';')) {
+    const idx = parte.indexOf('=')
+    if (idx === -1) continue
+    const name = parte.slice(0, idx).trim()
+    if (name !== AUTH_COOKIE_NAME) continue
+
+    let value = parte.slice(idx + 1).trim()
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1)
+    }
+    try {
+      value = decodeURIComponent(value)
+    } catch {
+      // el valor crudo ya sirve si no venía percent-encoded
+    }
+    return value.length > 0 ? value : null
+  }
+
+  return null
 }
 
 export function leerToken(request: HttpContext['request']): string | null {
@@ -113,7 +193,7 @@ export function leerToken(request: HttpContext['request']): string | null {
   const encoded = request.plainCookie(AUTH_COOKIE_NAME)
   if (typeof encoded === 'string' && encoded.length > 0) return encoded
 
-  return null
+  return tokenDesdeHeaderCookie(request)
 }
 
 export function leerSesion(request: HttpContext['request']): AuthPayload | null {
