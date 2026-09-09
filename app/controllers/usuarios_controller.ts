@@ -14,6 +14,7 @@ import {
   esPerfilCanonico,
   perfilExigeCentro,
   resolverActor,
+  usuarioEstaActivo,
 } from '#services/actor_sesion'
 import { emitirCookieAuth } from '#services/auth_jwt'
 
@@ -84,7 +85,7 @@ export default class UsuariosController {
         return response.status(200).json({ success: false, message: 'Contraseña incorrecta' })
       }
 
-      if (String(usuario.estado).toLowerCase() !== 'activo') {
+      if (!usuarioEstaActivo(usuario.estado)) {
         return response.status(401).json({ success: false, message: 'Tu usuario está inactivo' })
       }
 

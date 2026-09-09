@@ -60,6 +60,10 @@ export function perfilExigeCentro(perfil?: string | null) {
   return esRolDeCentro(perfil)
 }
 
+export function usuarioEstaActivo(estado?: string | null): boolean {
+  return String(estado ?? '').trim().toLowerCase() === 'activo'
+}
+
 export function esPerfilCanonico(perfil?: string | null): perfil is PerfilCanonico {
   return (PERFILES_CANONICOS as readonly string[]).includes(perfil ?? '')
 }
@@ -106,7 +110,7 @@ export async function resolverActor(request: HttpContext['request']): Promise<Ac
 
   const usuario = await Usuario.query().where('idusuarios', sesion.sub).preload('perfil').first()
   if (!usuario) return null
-  if (String(usuario.estado).toLowerCase() !== 'activo') return null
+  if (!usuarioEstaActivo(usuario.estado)) return null
 
   return actorDesdeUsuario(usuario)
 }

@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Aprendiz from '#models/aprendiz'
 import Usuario from '#models/usuario'
-import { actorDesdeUsuario } from '#services/actor_sesion'
+import { actorDesdeUsuario, usuarioEstaActivo } from '#services/actor_sesion'
 import { leerSesion, limpiarCookieAuth } from '#services/auth_jwt'
 
 export default class AuthController {
@@ -16,7 +16,7 @@ export default class AuthController {
 
     if (sesion.typ === 'usuario') {
       const usuario = await Usuario.query().where('idusuarios', sesion.sub).preload('perfil').first()
-      if (!usuario || String(usuario.estado).toLowerCase() !== 'activo') {
+      if (!usuario || !usuarioEstaActivo(usuario.estado)) {
         return response.status(401).json({
           success: false,
           message: 'Tu usuario está inactivo o ya no existe',

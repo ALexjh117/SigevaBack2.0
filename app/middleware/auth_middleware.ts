@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import Aprendiz from '#models/aprendiz'
 import Usuario from '#models/usuario'
+import { usuarioEstaActivo } from '#services/actor_sesion'
 import { esRutaPublica, leerToken, verificarJwt } from '#services/auth_jwt'
 
 declare module '@adonisjs/core/http' {
@@ -19,7 +20,7 @@ export default class AuthMiddleware {
     const method = ctx.request.method()
     const pathname = ctx.request.url().split('?')[0]
 
-    if (esRutaPublica(method, pathname)) {
+    if (method === 'OPTIONS' || esRutaPublica(method, pathname)) {
       return next()
     }
 
@@ -44,7 +45,7 @@ export default class AuthMiddleware {
         .where('idusuarios', payload.sub)
         .preload('perfil')
         .first()
-      if (!usuario || String(usuario.estado).toLowerCase() !== 'activo ') {
+      if (!usuario || !usuarioEstaActivo(usuario.estado)) {
         return ctx.response.status(401).json({
           success: false,
           message: 'Tu usuario está inactivo o ya no existe',
