@@ -9,6 +9,7 @@ import {
   esPerfilCanonico,
   esRolDeCentro,
   perfilExigeCentro,
+  usuarioEstaActivo,
   type ActorSesion,
 } from '#services/actor_sesion'
 
@@ -78,6 +79,14 @@ test.group('actor_sesion', () => {
     assert.isFalse(esPerfilCanonico('AdminCentro'))
     assert.isFalse(esPerfilCanonico('admin_sistema_2'))
     assert.isFalse(esPerfilCanonico('Administrador de centro'))
+  })
+
+  test('usuarioEstaActivo acepta Activo sin importar mayúsculas ni espacios', ({ assert }) => {
+    assert.isTrue(usuarioEstaActivo('Activo'))
+    assert.isTrue(usuarioEstaActivo('activo'))
+    assert.isTrue(usuarioEstaActivo(' activo '))
+    assert.isFalse(usuarioEstaActivo('Inactivo'))
+    assert.isFalse(usuarioEstaActivo(null))
   })
 
   test('el string del perfil es exacto admin_sistema', ({ assert }) => {
