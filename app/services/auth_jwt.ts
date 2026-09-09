@@ -114,7 +114,7 @@ export function verificarJwt(token: string): AuthPayload | null {
 }
 
 export function opcionesCookieAuth() {
-  const sameSite = env.get('AUTH_COOKIE_SAMESITE') || 'lax'
+  const sameSite = env.get('AUTH_COOKIE_SAMESITE') || 'none'
   return {
     httpOnly: true,
     secure: sameSite === 'none' ? true : app.inProduction,

@@ -1,4 +1,5 @@
 import { defineConfig } from '@adonisjs/cors'
+import env from '@adonisjs/core/services/env'
 
 /**
  * Configuration options to tweak the CORS policy. The following
@@ -6,9 +7,13 @@ import { defineConfig } from '@adonisjs/cors'
  *
  * https://docs.adonisjs.com/guides/security/cors
  */
+const isProduction = env.get('NODE_ENV') === 'production'
+
 const corsConfig = defineConfig({
   enabled: true,
-  origin: true,
+  origin: isProduction 
+    ? ['https://sigeva.cloudsenactpi.net']
+    : ['https://sigeva.cloudsenactpi.net', 'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:3000'],
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   headers: true,
   exposeHeaders: [],
