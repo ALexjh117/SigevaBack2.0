@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { esRutaPublica, firmarJwt, verificarJwt } from '#services/auth_jwt'
+import { diagnosticarJwt, esRutaPublica, firmarJwt, verificarJwt } from '#services/auth_jwt'
 
 test.group('auth_jwt', () => {
   test('firma y verifica un JWT de usuario', ({ assert }) => {
@@ -15,6 +15,19 @@ test.group('auth_jwt', () => {
     const token = firmarJwt({ sub: 1, typ: 'aprendiz', perfil: 'Aprendiz' })
     const roto = `${token.slice(0, -2)}aa`
     assert.isNull(verificarJwt(roto))
+    const diagnostico = diagnosticarJwt(roto)
+    assert.isFalse(diagnostico.ok)
+    if (!diagnostico.ok) {
+      assert.equal(diagnostico.motivo, 'firma_invalida')
+    }
+  })
+
+  test('diagnostica token mal formado', ({ assert }) => {
+    const diagnostico = diagnosticarJwt('no-es-un-jwt')
+    assert.isFalse(diagnostico.ok)
+    if (!diagnostico.ok) {
+      assert.equal(diagnostico.motivo, 'formato_invalido')
+    }
   })
 
   test('login, recuperar password, logout y docs son públicos', ({ assert }) => {
