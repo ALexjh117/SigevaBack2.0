@@ -12,8 +12,8 @@ const isProduction = env.get('NODE_ENV') === 'production'
 const corsConfig = defineConfig({
   enabled: true,
   origin: isProduction
-    ? ['https://sigeva.cloudsenactpi.net']
-    : ['https://sigeva.cloudsenactpi.net', 'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:3000'],
+    ? ['https://sigevafront2-0.onrender.com', 'https://sigeva.cloudsenactpi.net']
+    : ['https://sigevafront2-0.onrender.com', 'https://sigeva.cloudsenactpi.net', 'http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:3000'],
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   headers: true,
   exposeHeaders: [],
