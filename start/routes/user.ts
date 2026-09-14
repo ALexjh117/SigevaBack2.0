@@ -13,6 +13,10 @@ router.get('/api/usuarios/funcionarios', user.listarFuncionarios)
 router.post('/api/usuarios/admin-sistema', user.crearAdminSistema)
 router.get('/api/usuarios/admin-sistema', user.listarAdminSistema)
 
+// Rutas para Colaboradores
+router.post('/api/usuarios/colaboradores', user.crearColaborador)
+router.get('/api/usuarios/colaboradores', user.listarColaboradores)
+
 // Rutas generales de usuarios (manteniendo las existentes)
 router.post('/api/usuarios/crear', user.crear)
 router.post('/api/usuarios/login', user.login)

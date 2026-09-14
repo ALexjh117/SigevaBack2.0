@@ -114,10 +114,10 @@ export function verificarJwt(token: string): AuthPayload | null {
 }
 
 export function opcionesCookieAuth() {
-  const sameSite = env.get('AUTH_COOKIE_SAMESITE') || 'none'
+  const sameSite = env.get('AUTH_COOKIE_SAMESITE') || 'lax'
   return {
     httpOnly: true,
-    secure: sameSite === 'none' ? true : app.inProduction,
+    secure: app.inProduction,
     sameSite,
     maxAge: jwtTtlSeconds(),
     path: '/',
@@ -132,19 +132,6 @@ export function emitirCookieAuth(
   const token = firmarJwt(claims)
   const opciones = opcionesCookieAuth()
   response.plainCookie(AUTH_COOKIE_NAME, token, opciones)
-  console.log('[AUTH] Cookie JWT emitida', {
-    cookie: AUTH_COOKIE_NAME,
-    sub: claims.sub,
-    typ: claims.typ,
-    perfil: claims.perfil,
-    sameSite: opciones.sameSite,
-    secure: opciones.secure,
-    maxAge: opciones.maxAge,
-    path: opciones.path,
-    httpOnly: opciones.httpOnly,
-    tokenLargo: token.length,
-    tokenPreview: `${token.slice(0, 16)}...`,
-  })
   return token
 }
 

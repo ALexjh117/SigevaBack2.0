@@ -26,6 +26,7 @@ export const PERFILES_CANONICOS = [
   'Funcionario',
   'Aprendiz',
   PERFIL_ADMIN_SISTEMA,
+  'colaborador',
 ] as const
 
 export type PerfilCanonico = (typeof PERFILES_CANONICOS)[number]
@@ -37,6 +38,7 @@ export type ActorSesion = {
   esAdminSistema: boolean
   esFuncionario: boolean
   esAdministrador: boolean
+  esColaborador: boolean
   esDeCentro: boolean
 }
 
@@ -52,8 +54,12 @@ export function esAdministrador(perfil?: string | null) {
   return perfil?.toLowerCase() === 'administrador'
 }
 
+export function esColaborador(perfil?: string | null) {
+  return perfil?.toLowerCase() === 'colaborador'
+}
+
 export function esRolDeCentro(perfil?: string | null) {
-  return esAdminSistema(perfil) || esFuncionario(perfil)
+  return esAdminSistema(perfil) || esFuncionario(perfil) || esColaborador(perfil)
 }
 
 export function perfilExigeCentro(perfil?: string | null) {
@@ -100,6 +106,7 @@ export function actorDesdeUsuario(usuario: Usuario): ActorSesion {
     esAdminSistema: esAdminSistema(perfil),
     esFuncionario: esFuncionario(perfil),
     esAdministrador: esAdministrador(perfil),
+    esColaborador: esColaborador(perfil),
     esDeCentro: esRolDeCentro(perfil),
   }
 }
@@ -248,12 +255,12 @@ export function centroDestinoDeAlta(
   return n
 }
 
-/** El funcionario de mesa no lista jurados. admin_sistema lista SOLO los de su sede. */
+/** El funcionario de mesa no lista jurados. admin_sistema lista SOLO los de su sede. El colaborador no lista funcionarios. */
 export function bloquearRedFuncionarios(
   actor: ActorSesion | null,
   response: HttpContext['response']
 ): boolean {
-  if (actor?.esFuncionario) {
+  if (actor?.esFuncionario || actor?.esColaborador) {
     response.status(403).json({
       success: false,
       message: 'No tienes permiso para listar funcionarios de toda la red',

@@ -14,7 +14,6 @@ import { resolverActor } from '#services/actor_sesion'
 import {
   normalizarDocumento,
   normalizarEmail,
-  parseFichaCaracterizacion,
 } from '#services/import_ficha'
 
 export default class ImportExcelController {
@@ -51,7 +50,7 @@ export default class ImportExcelController {
         await trx.rollback()
         return response.forbidden({
           success: false,
-          message: 'Solo administradores, admin_sistema o funcionarios pueden importar aprendices',
+          message: 'Solo administradores, admin_sistema, funcionarios o colaboradores pueden importar aprendices',
         })
       }
 
@@ -104,22 +103,22 @@ export default class ImportExcelController {
         })
       }
 
-      // 3) Leer Excel — reporte Sofia Plus: C2 = "ficha - programa", filas desde la 5
+      // 3) Leer Excel — nuevo formato: columnas Ficha y Programa en cada fila, filas desde la 5
       const workbook = XLSX.read(file.tmpPath, { type: 'file' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
 
-      const { numeroGrupo, nombrePrograma } = parseFichaCaracterizacion(sheet['C2']?.v)
+      const data: any[] = XLSX.utils.sheet_to_json(sheet, { range: 0, defval: '' })
 
-      if (!numeroGrupo || !nombrePrograma) {
+      if (data.length === 0) {
         await trx.rollback()
         return response.status(400).json({
           success: false,
-          message:
-            'No se encontró la ficha de caracterización o el programa en C2. Usa el Reporte de Aprendices de Sofia Plus sin cambiar el formato.',
+          message: 'El archivo Excel no tiene datos. Asegúrate de que tenga las columnas: Tipo de Documento, Número de Documento, Nombre, Apellidos, Celular, Correo Electrónico, Estado, Ficha, Programa.',
         })
       }
 
-      const data: any[] = XLSX.utils.sheet_to_json(sheet, { range: 4, defval: '' })
+      // Ya NO obtenemos ficha y programa de la primera fila sola
+      // Cada fila tiene su propia ficha y programa, se procesará individualmente
 
       // Recolectar documentos y correos
       const docsSet = new Set<string>()
@@ -169,30 +168,53 @@ export default class ImportExcelController {
 
       const AREA_SOFTWARE_ID = 1
 
-      let grupo = await Grupo.query({ client: trx }).where('grupo', numeroGrupo).first()
-      if (!grupo) {
-        grupo = new Grupo()
-        grupo.grupo = numeroGrupo
-        grupo.jornada = ''
-        await grupo.useTransaction(trx).save()
+      // Cache para grupos y programas ya creados (para evitar duplicados)
+      const gruposCache = new Map<string, any>()
+      const programasCache = new Map<string, any>()
+
+      // Función auxiliar para obtener o crear grupo
+      const obtenerGrupo = async (numeroGrupo: string) => {
+        if (gruposCache.has(numeroGrupo)) {
+          return gruposCache.get(numeroGrupo)
+        }
+
+        let grupo = await Grupo.query({ client: trx }).where('grupo', numeroGrupo).first()
+        if (!grupo) {
+          grupo = new Grupo()
+          grupo.grupo = numeroGrupo
+          grupo.jornada = ''
+          await grupo.useTransaction(trx).save()
+        }
+        gruposCache.set(numeroGrupo, grupo)
+        return grupo
       }
 
-      let programa = await ProgramaFormacion.query({ client: trx })
-        .whereRaw("LOWER(REGEXP_REPLACE(TRIM(programa), '\\.+$', '')) = ?", [
-          nombrePrograma.toLowerCase(),
-        ])
-        .first()
-      if (!programa) {
-        programa = new ProgramaFormacion()
-        Object.assign(programa, {
-          programa: nombrePrograma,
-          idnivel_formacion: nivel.idnivel_formacion,
-          idarea_tematica: AREA_SOFTWARE_ID,
-          codigo_programa: 'N/A',
-          version: '1.0',
-          duracion: 0,
-        })
-        await programa.useTransaction(trx).save()
+      // Función auxiliar para obtener o crear programa
+      const obtenerPrograma = async (nombrePrograma: string) => {
+        const nombreNormalizado = nombrePrograma.toLowerCase()
+        if (programasCache.has(nombreNormalizado)) {
+          return programasCache.get(nombreNormalizado)
+        }
+
+        let programa = await ProgramaFormacion.query({ client: trx })
+          .whereRaw("LOWER(REGEXP_REPLACE(TRIM(programa), '\\.+$', '')) = ?", [
+            nombreNormalizado,
+          ])
+          .first()
+        if (!programa) {
+          programa = new ProgramaFormacion()
+          Object.assign(programa, {
+            programa: nombrePrograma,
+            idnivel_formacion: nivel.idnivel_formacion,
+            idarea_tematica: AREA_SOFTWARE_ID,
+            codigo_programa: 'N/A',
+            version: '1.0',
+            duracion: 0,
+          })
+          await programa.useTransaction(trx).save()
+        }
+        programasCache.set(nombreNormalizado, programa)
+        return programa
       }
 
       // ----------------- FILTRO DE DUPLICADOS DENTRO DEL MISMO EXCEL -----------------
@@ -240,6 +262,14 @@ export default class ImportExcelController {
         const celular = String(fila['Celular'] ?? '')
         const estado = fila['Estado'] || 'activo'
 
+        // Obtener ficha y programa específicos de esta fila
+        const numeroGrupoFila = String(fila['Ficha'] || '').trim()
+        const nombreProgramaFila = String(fila['Programa'] || '').trim()
+
+        // Obtener o crear grupo y programa específicos para esta fila
+        const grupoFila = await obtenerGrupo(numeroGrupoFila)
+        const programaFila = await obtenerPrograma(nombreProgramaFila)
+
         if (!numeroDocumento) {
           skipped++
           const motivo = 'Sin número de documento (la contraseña inicial es el documento)'
@@ -280,8 +310,8 @@ export default class ImportExcelController {
               tipo_documento: tipoDocumento || existe.tipo_documento,
               numero_documento: numeroDocumento || existe.numero_documento,
               email: email || existe.email,
-              idgrupo: grupo.idgrupo || existe.idgrupo,
-              idprograma_formacion: programa.idprograma_formacion || existe.idprograma_formacion,
+              idgrupo: grupoFila.idgrupo || existe.idgrupo,
+              idprograma_formacion: programaFila.idprograma_formacion || existe.idprograma_formacion,
               centro_formacion_idcentro_formacion:
                 centroFormacionId || existe.centro_formacion_idcentro_formacion,
             })
@@ -321,8 +351,8 @@ export default class ImportExcelController {
           // Clave inicial = número de documento. Si se olvida, recuperar-password.
           const hashedPassword = await bcrypt.hash(numeroDocumento, 10)
           const aprendizNuevo: any = {
-            idgrupo: grupo.idgrupo,
-            idprograma_formacion: programa.idprograma_formacion,
+            idgrupo: grupoFila.idgrupo,
+            idprograma_formacion: programaFila.idprograma_formacion,
             perfil_idperfil: perfil.idperfil,
             nombres,
             apellidos,
@@ -356,8 +386,6 @@ export default class ImportExcelController {
         inserted,
         updated,
         skipped,
-        ficha: numeroGrupo,
-        programa: nombrePrograma,
         centroFormacionId,
         skippedAprendices,
         processed,
