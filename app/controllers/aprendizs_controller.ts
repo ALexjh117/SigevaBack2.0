@@ -44,6 +44,13 @@ export default class AprendizsController {
       ])
 
       const actor = await resolverActor(request)
+      if (actor?.esColaborador) {
+        await trx.rollback()
+        return response.forbidden({
+          success: false,
+          message: 'El colaborador solo puede actualizar aprendices existentes',
+        })
+      }
       if (bloquearSiCentroAjeno(actor, data.centro_formacion_idcentro_formacion, response)) {
         await trx.rollback()
         return
@@ -259,12 +266,12 @@ export default class AprendizsController {
         .first()
 
       if (!aprendizExist)
-        return response.status(401).json({ success: false, message: 'Fallo en la autenticación' })
+        return response.status(401).json({ success: false, message: 'Credenciales incorrectas' })
 
       const verifyPassword = await bcrypt.compare(password, aprendizExist.password)
 
       if (!verifyPassword)
-        return response.status(401).json({ success: false, message: 'Fallo en la autenticación' })
+        return response.status(401).json({ success: false, message: 'Credenciales incorrectas' })
 
       emitirCookieAuth(response, {
         sub: aprendizExist.idaprendiz,
