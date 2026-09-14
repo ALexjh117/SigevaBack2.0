@@ -77,12 +77,12 @@ export default class UsuariosController {
 
       const usuario = await Usuario.findBy('email', email)
       if (!usuario) {
-        return response.status(401).json({ success: false, message: 'Usuario no encontrado' })
+        return response.status(401).json({ success: false, message: 'Credenciales incorrectas' })
       }
 
       const passwordValido = await bcrypt.compare(password, usuario.password)
       if (!passwordValido) {
-        return response.status(200).json({ success: false, message: 'Contraseña incorrecta' })
+        return response.status(401).json({ success: false, message: 'Credenciales incorrectas' })
       }
 
       if (!usuarioEstaActivo(usuario.estado)) {
@@ -572,19 +572,18 @@ export default class UsuariosController {
 
       await usuario.save()
 
-      emitirCookieAuth(response, {
-        sub: usuario.idusuarios,
-        typ: 'usuario',
-        perfil: 'colaborador',
-      })
-
+      // No emitir cookie aquí: es un alta administrativa, no un login.
+      // emitirCookieAuth reemplazaba la sesión del Administrador de red
+      // por la del colaborador recién creado y rompía listado/creación siguientes.
       return response.status(201).json({
+        success: true,
         message: 'Colaborador creado exitosamente',
-        usuario: {
+        data: {
           id: usuario.idusuarios,
           nombres: usuario.nombres,
           apellidos: usuario.apellidos,
           email: usuario.email,
+          estado: usuario.estado,
           perfil: 'colaborador',
           idcentro_formacion: usuario.idcentro_formacion,
         },

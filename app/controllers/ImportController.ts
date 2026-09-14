@@ -46,11 +46,19 @@ export default class ImportExcelController {
         })
       }
 
+      if (actor.esColaborador) {
+        await trx.rollback()
+        return response.forbidden({
+          success: false,
+          message: 'El colaborador solo puede actualizar aprendices, no importarlos',
+        })
+      }
+
       if (!actor.esDeCentro && !actor.esAdministrador) {
         await trx.rollback()
         return response.forbidden({
           success: false,
-          message: 'Solo administradores, admin_sistema, funcionarios o colaboradores pueden importar aprendices',
+          message: 'Solo administradores, admin_sistema o funcionarios pueden importar aprendices',
         })
       }
 
