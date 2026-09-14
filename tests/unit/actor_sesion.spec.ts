@@ -21,6 +21,7 @@ function actorDeCentro(idcentro: number | null): ActorSesion {
     esAdminSistema: true,
     esFuncionario: false,
     esAdministrador: false,
+    esColaborador: false,
     esDeCentro: true,
   }
 }
@@ -33,6 +34,7 @@ function actorAdministrador(): ActorSesion {
     esAdminSistema: false,
     esFuncionario: false,
     esAdministrador: true,
+    esColaborador: false,
     esDeCentro: false,
   }
 }
@@ -45,6 +47,7 @@ function actorFuncionario(idcentro: number): ActorSesion {
     esAdminSistema: false,
     esFuncionario: true,
     esAdministrador: false,
+    esColaborador: false,
     esDeCentro: true,
   }
 }

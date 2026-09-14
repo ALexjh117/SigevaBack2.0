@@ -229,7 +229,6 @@ export default class EleccionControler {
         eleccionesActivas,
       })
     } catch (error) {
-      console.log(error)
       return response
         .status(500)
         .json({ message: 'Error al obtner las elecciones por centro de formacion' })
@@ -269,7 +268,6 @@ export default class EleccionControler {
         eleccionesActivas,
       })
     } catch (error) {
-      console.log(error)
       return response
         .status(500)
         .json({ message: 'Error al obtner las elecciones por centro de formacion' })

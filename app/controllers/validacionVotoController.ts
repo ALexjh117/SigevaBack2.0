@@ -256,17 +256,8 @@ export default class ValidacionVotoController {
         })
       }
 
-      console.log('🔧 Configuración correo OTP:', {
-        mailer: process.env.MAIL_MAILER || 'smtp',
-        host: process.env.SMTP_HOST,
-        from: remitente.address,
-        to: emailLimpio,
-      })
-
       let emailEnviado = false
       try {
-        console.log(`📧 Intentando enviar email OTP a: ${emailLimpio}`)
-
         await mail.send((message) => {
           message
             .to(emailLimpio)
@@ -280,7 +271,6 @@ export default class ValidacionVotoController {
         })
 
         emailEnviado = true
-        console.log(`✅ Email OTP enviado exitosamente a: ${emailLimpio}`)
       } catch (emailError: any) {
         console.error('❌ Error completo enviando email OTP:', {
           error: emailError?.message,
@@ -356,7 +346,6 @@ export default class ValidacionVotoController {
           message: 'Inicia sesión como aprendiz para votar',
         })
       }
-      console.log('✅ Datos validados:', data)
 
       // 1. Buscar la validación temporal solo con el código OTP
       const validacionTemporal = await ValidacionVoto.query()

@@ -10,7 +10,7 @@ export default class CentroFormacionController {
   async obtiene({ request, response }: HttpContext) {
     try {
       const actor = await resolverActor(request)
-      const query = CentroFormacion.query()
+      const query = CentroFormacion.query().preload('regional')
       if (actor?.esDeCentro && actor.idcentro) {
         query.where('idcentro_formacion', actor.idcentro)
       }
@@ -94,17 +94,12 @@ export default class CentroFormacionController {
     try{
       const {regional} = params;
       const actor = await resolverActor(request)
-
-      const query = CentroFormacion.query().where('idregional', regional)
+      const query = CentroFormacion.query().where('idregional', regional).preload('regional')
       if (actor?.esDeCentro && actor.idcentro) {
         query.where('idcentro_formacion', actor.idcentro)
       }
-
       const data = await query
-
-
       return response.status(200).json({message:'Exito', data})
-
     }catch(error){
       return response.status(500).json({
         success: false,

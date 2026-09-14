@@ -34,12 +34,12 @@ export default class UsuariosController {
       const perfilRow = idperfil ? await Perfil.find(idperfil) : null
       if (!perfilRow || !esPerfilCanonico(perfilRow.perfil)) {
         return response.status(400).json({
-          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario y Aprendiz',
+          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario, Aprendiz y colaborador',
         })
       }
       if (perfilExigeCentro(perfilRow.perfil) && !idcentro_formacion) {
         return response.status(400).json({
-          message: 'El admin_sistema y el funcionario deben tener un centro de formación',
+          message: 'El admin_sistema, funcionario y colaborador deben tener un centro de formación',
         })
       }
       if (esAdminSistema(perfilRow.perfil) && (await centroYaTieneAdminSistema(Number(idcentro_formacion)))) {
@@ -156,13 +156,13 @@ export default class UsuariosController {
       if (!perfilFinal || !esPerfilCanonico(perfilFinal.perfil)) {
         return response.status(400).json({
           success: false,
-          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario y Aprendiz',
+          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario, Aprendiz y colaborador',
         })
       }
       if (perfilExigeCentro(perfilFinal.perfil) && !usuario.idcentro_formacion) {
         return response.status(400).json({
           success: false,
-          message: 'El admin_sistema y el funcionario deben tener un centro de formación',
+          message: 'El admin_sistema, funcionario y colaborador deben tener un centro de formación',
         })
       }
       if (
@@ -528,6 +528,106 @@ export default class UsuariosController {
       })))
     } catch (error) {
       return response.status(500).json({ error: 'Error al listar admin_sistema' })
+    }
+  }
+
+  async crearColaborador({ request, response }: HttpContext) {
+    try {
+      const actor = await resolverActor(request)
+      if (bloquearSiNoEsAdministrador(actor, response)) return
+
+      const { nombres, apellidos, celular, tipo_documento, numero_documento, email, password, estado, idcentro_formacion } = request.body()
+
+      const existe = await Usuario.findBy('email', email)
+      if (existe) {
+        return response.status(400).json({ message: 'El email ya está registrado' })
+      }
+
+      const perfilColaborador = await Perfil.findBy('perfil', 'colaborador')
+      if (!perfilColaborador) {
+        return response.status(500).json({
+          error: 'Perfil colaborador no configurado. Corre database/sql/perfil_colaborador.sql'
+        })
+      }
+
+      if (!idcentro_formacion) {
+        return response.status(400).json({
+          message: 'El colaborador debe tener un centro de formación',
+        })
+      }
+
+      const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash(numero_documento, 10)
+
+      const usuario = new Usuario()
+      usuario.nombres = nombres
+      usuario.apellidos = apellidos
+      usuario.celular = celular
+      usuario.tipo_documento = tipo_documento
+      usuario.numero_documento = numero_documento
+      usuario.email = email
+      usuario.password = hashedPassword
+      usuario.estado = estado || 'Activo'
+      usuario.idperfil = perfilColaborador.idperfil
+      usuario.idcentro_formacion = idcentro_formacion
+
+      await usuario.save()
+
+      emitirCookieAuth(response, {
+        sub: usuario.idusuarios,
+        typ: 'usuario',
+        perfil: 'colaborador',
+      })
+
+      return response.status(201).json({
+        message: 'Colaborador creado exitosamente',
+        usuario: {
+          id: usuario.idusuarios,
+          nombres: usuario.nombres,
+          apellidos: usuario.apellidos,
+          email: usuario.email,
+          perfil: 'colaborador',
+          idcentro_formacion: usuario.idcentro_formacion,
+        },
+      })
+    } catch (error: any) {
+      console.error('Error en crearColaborador:', error)
+      return response.status(500).json({
+        error: 'Error al crear colaborador',
+        details: error.message,
+      })
+    }
+  }
+
+  async listarColaboradores({ request, response }: HttpContext) {
+    try {
+      const actor = await resolverActor(request)
+      if (bloquearSiNoEsAdministrador(actor, response)) return
+
+      const query = Usuario.query()
+        .preload('perfil')
+        .whereHas('perfil', (q) => {
+          q.where('perfil', 'colaborador')
+        })
+        .preload('centro', (c) => {
+          c.preload('regional')
+        })
+
+      const colaboradores = await query
+
+      return response.json(colaboradores.map((c) => ({
+        id: c.idusuarios,
+        nombres: c.nombres,
+        apellidos: c.apellidos,
+        celular: c.celular,
+        numeroDocumento: c.numero_documento,
+        email: c.email,
+        estado: c.estado,
+        perfil: 'colaborador',
+        idcentro_formacion: c.idcentro_formacion,
+        centroFormacion: c.centro,
+      })))
+    } catch (error) {
+      return response.status(500).json({ error: 'Error al listar colaboradores' })
     }
   }
 }
