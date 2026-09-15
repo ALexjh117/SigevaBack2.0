@@ -9,6 +9,7 @@ import db from '@adonisjs/lucid/services/db'
 import Perfil from '#models/perfil'
 import {
   bloquearSiCentroAjeno,
+  bloquearSiFaltaActor,
   resolverActor,
 } from '#services/actor_sesion'
 import { emitirCookieAuth } from '#services/auth_jwt'
@@ -44,7 +45,11 @@ export default class AprendizsController {
       ])
 
       const actor = await resolverActor(request)
-      if (actor?.esColaborador) {
+      if (bloquearSiFaltaActor(actor, response)) {
+        await trx.rollback()
+        return
+      }
+      if (actor.esColaborador) {
         await trx.rollback()
         return response.forbidden({
           success: false,
@@ -55,7 +60,7 @@ export default class AprendizsController {
         await trx.rollback()
         return
       }
-      if (actor?.esDeCentro) {
+      if (actor.esDeCentro) {
         data.centro_formacion_idcentro_formacion = actor.idcentro
       }
 
@@ -198,6 +203,7 @@ export default class AprendizsController {
       }
 
       const actor = await resolverActor(request)
+      if (bloquearSiFaltaActor(actor, response)) return
       if (bloquearSiCentroAjeno(actor, aprendiz.centro_formacion_idcentro_formacion, response)) {
         return
       }
@@ -215,6 +221,11 @@ export default class AprendizsController {
         'email',
         'password',
       ])
+
+      // Colaborador: no puede cambiar el perfil del aprendiz.
+      if (actor.esColaborador) {
+        delete data.perfil_idperfil
+      }
 
       // Verificar email si se cambió
       if (data.email && data.email !== aprendiz.email) {

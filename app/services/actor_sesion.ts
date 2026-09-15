@@ -1,14 +1,14 @@
 /**
  * HU-S2-030 — aislamiento por centro de formación.
  *
- * Roles:
+ * Roles (producto nacional):
  * - Aprendiz: urna de su centro. No administra.
- * - Funcionario: opera la mesa de UN centro. No crea pares ni admin_sistema.
- * - admin_sistema: administra UN centro (elecciones, padrón, import de su sede,
- *   alta de funcionarios de SU sede). Centro obligatorio. No ve tablero de red,
- *   no lista funcionarios de toda la red, no importa eligiendo otra sede, no vota.
- * - Administrador: gobierno de la red. Crea admin_sistema y funcionarios
- *   eligiendo el centro. Importa aprendices eligiendo el centro. Ve todo.
+ * - colaborador: solo actualiza aprendices de SU centro. Sin elecciones ni altas.
+ * - admin_sistema (Admin de centro): administra UN centro (elecciones, padrón,
+ *   import, alta de colaboradores de SU sede). Centro obligatorio. No ve tablero de red.
+ * - Administrador (Admin general): gobierno de la red. Crea admin_sistema y
+ *   colaboradores eligiendo el centro. Importa aprendices eligiendo el centro. Ve todo.
+ * - Funcionario: legado; no se crean nuevos. Si existe, opera como mesa de un centro.
  *
  * Fuente del centro: usuarios.idcentro_formacion (sesión JWT en cookie HttpOnly).
  * Si el cliente manda otro idcentro, se ignora o 403. Nunca filas ajenas.
@@ -212,6 +212,63 @@ export function bloquearSiNoPuedeGestionarFuncionarios(
   response.status(403).json({
     success: false,
     message: 'No tienes permiso para gestionar funcionarios',
+  })
+  return true
+}
+
+/** Admin general o Admin de centro: gestión de usuarios de sede (colaboradores). */
+export function bloquearSiNoPuedeGestionarUsuariosCentro(
+  actor: ActorSesion | null,
+  response: HttpContext['response']
+): boolean {
+  if (bloquearSiFaltaActor(actor, response)) return true
+  if (actor.esAdministrador) return false
+  if (actor.esAdminSistema) {
+    if (!actor.idcentro) {
+      response.status(400).json({
+        success: false,
+        message: 'Tu usuario no tiene centro de formación asignado',
+      })
+      return true
+    }
+    return false
+  }
+  response.status(403).json({
+    success: false,
+    message: 'No tienes permiso para gestionar usuarios del centro',
+  })
+  return true
+}
+
+/** Colaborador: solo edición de aprendices; bloquea el resto de gestión. */
+export function bloquearSiEsColaborador(
+  actor: ActorSesion | null,
+  response: HttpContext['response'],
+  mensaje = 'El colaborador solo puede actualizar información de aprendices de su centro'
+): boolean {
+  if (actor?.esColaborador) {
+    response.status(403).json({
+      success: false,
+      message: mensaje,
+    })
+    return true
+  }
+  return false
+}
+
+/** Quién puede crear/editar elecciones y candidatos: no colaborador ni aprendiz. */
+export function bloquearSiNoPuedeGestionarElecciones(
+  actor: ActorSesion | null,
+  response: HttpContext['response']
+): boolean {
+  if (bloquearSiFaltaActor(actor, response)) return true
+  if (bloquearSiEsColaborador(actor, response, 'El colaborador no puede gestionar elecciones')) {
+    return true
+  }
+  if (actor.esAdministrador || actor.esAdminSistema || actor.esFuncionario) return false
+  response.status(403).json({
+    success: false,
+    message: 'No tienes permiso para gestionar elecciones',
   })
   return true
 }
