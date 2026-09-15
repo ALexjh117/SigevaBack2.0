@@ -7,6 +7,7 @@ import EleccionService from '#services/EleccionesServices'
 import FiltrarService from '#services/FiltroJorElCen'
 import {
   bloquearSiCentroAjeno,
+  bloquearSiNoPuedeGestionarElecciones,
   bloquearTableroRed,
   resolverActor,
 } from '#services/actor_sesion'
@@ -55,6 +56,7 @@ export default class EleccionControler {
       ])
 
       const actor = await resolverActor(request)
+      if (bloquearSiNoPuedeGestionarElecciones(actor, response)) return
       if (bloquearSiCentroAjeno(actor, dataEleccion.idcentro_formacion, response)) return
       if (actor?.esDeCentro) {
         dataEleccion.idcentro_formacion = actor.idcentro
@@ -115,6 +117,7 @@ export default class EleccionControler {
       ])
 
       const actor = await resolverActor(request)
+      if (bloquearSiNoPuedeGestionarElecciones(actor, response)) return
       if (bloquearSiCentroAjeno(actor, eleccion.idcentro_formacion, response)) return
       if (bloquearSiCentroAjeno(actor, dataEleccion.idcentro_formacion, response)) return
       if (actor?.esDeCentro) {

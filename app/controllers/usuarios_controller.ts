@@ -8,9 +8,11 @@ import {
   buscarPerfilCanonico,
   bloquearSiNoEsAdministrador,
   bloquearSiNoPuedeGestionarFuncionarios,
+  bloquearSiNoPuedeGestionarUsuariosCentro,
   centroDestinoDeAlta,
   centroYaTieneAdminSistema,
   esAdminSistema,
+  esColaborador,
   esPerfilCanonico,
   perfilExigeCentro,
   resolverActor,
@@ -130,7 +132,7 @@ export default class UsuariosController {
   async actualizar({ request, response, params }: HttpContext) {
     try {
       const actor = await resolverActor(request)
-      if (bloquearSiNoEsAdministrador(actor, response)) return
+      if (bloquearSiNoPuedeGestionarUsuariosCentro(actor, response) || !actor) return
 
       const id = params.id
       const usuario = await Usuario.find(id)
@@ -139,24 +141,55 @@ export default class UsuariosController {
         return response.status(404).json({ success: false, message: 'Usuario no encontrado' })
       }
 
-      const { nombres, apellidos, celular, numero_documento, email, password, estado, idperfil, idcentro_formacion } = request.body()
+      await usuario.load('perfil')
+      const perfilActual = usuario.perfil?.perfil ?? ''
 
-      // Solo actualiza si se envía un nuevo valor
+      // Admin de centro: solo colaboradores de su sede (no toca admin_sistema ni red).
+      if (actor.esAdminSistema) {
+        if (!esColaborador(perfilActual)) {
+          return response.status(403).json({
+            success: false,
+            message: 'Solo puedes actualizar colaboradores de tu centro de formación',
+          })
+        }
+        if (Number(usuario.idcentro_formacion) !== actor.idcentro) {
+          return response.status(403).json({
+            success: false,
+            message: 'No puedes consultar ni administrar otro centro de formación',
+          })
+        }
+      }
+
+      const { nombres, apellidos, celular, numero_documento, email, password, estado, idperfil, idcentro_formacion } =
+        request.body()
+
       if (nombres) usuario.nombres = nombres
       if (apellidos) usuario.apellidos = apellidos
       if (celular) usuario.celular = celular
       if (numero_documento) usuario.numero_documento = numero_documento
       if (email) usuario.email = email
       if (password) usuario.password = await bcrypt.hash(password, 10)
-      if (estado !== undefined) usuario.estado = estado
-      if (idperfil) usuario.idperfil = idperfil
-      if (idcentro_formacion) usuario.idcentro_formacion = idcentro_formacion
+      if (estado !== undefined) {
+        usuario.estado = String(estado).toLowerCase().startsWith('inac') ? 'Inactivo' : 'Activo'
+      }
+
+      // Solo Admin general puede cambiar perfil o reasignar centro.
+      if (actor.esAdministrador) {
+        if (idperfil) usuario.idperfil = idperfil
+        if (idcentro_formacion) usuario.idcentro_formacion = idcentro_formacion
+      } else if (idperfil || idcentro_formacion) {
+        return response.status(403).json({
+          success: false,
+          message: 'No puedes cambiar el rol ni el centro de formación del usuario',
+        })
+      }
 
       const perfilFinal = await Perfil.find(usuario.idperfil)
       if (!perfilFinal || !esPerfilCanonico(perfilFinal.perfil)) {
         return response.status(400).json({
           success: false,
-          message: 'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario, Aprendiz y colaborador',
+          message:
+            'El perfil no es válido. Solo existen Administrador, admin_sistema, Funcionario, Aprendiz y colaborador',
         })
       }
       if (perfilExigeCentro(perfilFinal.perfil) && !usuario.idcentro_formacion) {
@@ -186,100 +219,30 @@ export default class UsuariosController {
           estado: usuario.estado,
           perfil: perfilFinal?.perfil ?? usuario.idperfil,
           centroFormacion: usuario.idcentro_formacion,
-        }
+        },
       })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Error interno al actualizar usuario',
-        error: error.message
+        error: error.message,
       })
     }
   }
 
-  async crearFuncionario({ request, response }: HttpContext) {
+  async crearFuncionario({ response }: HttpContext) {
     try {
-      const actor = await resolverActor(request)
-      if (bloquearSiNoPuedeGestionarFuncionarios(actor, response) || !actor) return
-
-      const { nombres, apellidos, celular, tipo_documento, numero_documento, email, password, idcentro_formacion } = request.only([
-        'nombres',
-        'apellidos',
-        'celular',
-        'tipo_documento',
-        'numero_documento',
-        'email',
-        'password',
-        'idcentro_formacion'
-      ])
-
-      const required = ['nombres', 'apellidos', 'celular', 'tipo_documento', 'numero_documento', 'email', 'password']
-      if (actor.esAdministrador) required.push('idcentro_formacion')
-
-      if (!email || !password || !nombres || !apellidos || !celular || !tipo_documento || !numero_documento) {
-        return response.status(400).json({
-          error: 'Faltan campos requeridos',
-          required,
-        })
-      }
-
-      const centroId = centroDestinoDeAlta(actor, idcentro_formacion, response)
-      if (centroId == null) return
-
-      const centro = await CentroFormacion.find(centroId)
-      if (!centro) {
-        return response.status(400).json({
-          success: false,
-          message: 'El centro de formación no existe',
-        })
-      }
-
-      const perfilFuncionario = await Perfil.findBy('perfil', 'Funcionario')
-      if (!perfilFuncionario) {
-        return response.status(400).json({
-          error: 'Perfil de Funcionario no configurado en el sistema'
-        })
-      }
-
-      const existe = await Usuario.findBy('email', email)
-      if (existe) {
-        return response.status(400).json({
-          error: 'El correo electrónico ya está registrado'
-        })
-      }
-
-      const funcionario = await Usuario.create({
-        nombres,
-        apellidos,
-        celular,
-        tipo_documento,
-        numero_documento,
-        email,
-        password: await bcrypt.hash(password, 10),
-        estado: 'Activo',
-        idperfil: perfilFuncionario.idperfil,
-        idcentro_formacion: centroId,
-      })
-
-      return response.status(201).json({
-        success: true,
-        message: 'Funcionario creado exitosamente',
-        data: {
-          id: funcionario.idusuarios,
-          nombres: funcionario.nombres,
-          apellidos: funcionario.apellidos,
-          email: funcionario.email,
-          estado: funcionario.estado,
-          idcentro_formacion: funcionario.idcentro_formacion,
-          centroFormacion: funcionario.idcentro_formacion,
-          perfil: 'Funcionario'
-        }
+      // Rol Funcionario deprecado a nivel producto: usar admin_sistema / colaborador.
+      return response.status(410).json({
+        success: false,
+        message:
+          'El rol Funcionario ya no se crea. Usa Admin de centro o Colaborador según el caso.',
       })
     } catch (error) {
       console.error('Error en crearFuncionario:', error)
       return response.status(500).json({
         error: 'Error al crear funcionario',
-        details: error.message
+        details: error.message,
       })
     }
   }
@@ -295,7 +258,7 @@ export default class UsuariosController {
       if (perfil.perfil !== 'Funcionario') {
         return response.status(400).json({
           success: false,
-          message: 'El usuario no es un funcionario'
+          message: 'El usuario no es un funcionario',
         })
       }
 
@@ -306,9 +269,21 @@ export default class UsuariosController {
         })
       }
 
-      const { email, estado, idcentro_formacion } = request.only(['email', 'estado', 'idcentro_formacion'])
+      const { email, estado, idcentro_formacion, nombres, apellidos, celular, password } = request.only([
+        'email',
+        'estado',
+        'idcentro_formacion',
+        'nombres',
+        'apellidos',
+        'celular',
+        'password',
+      ])
 
+      if (nombres) funcionario.nombres = nombres
+      if (apellidos) funcionario.apellidos = apellidos
+      if (celular) funcionario.celular = celular
       if (email) funcionario.email = email
+      if (password) funcionario.password = await bcrypt.hash(password, 10)
       if (estado) {
         funcionario.estado = String(estado).toLowerCase().startsWith('inac') ? 'Inactivo' : 'Activo'
       }
@@ -340,21 +315,21 @@ export default class UsuariosController {
           estado: funcionario.estado,
           idcentro_formacion: funcionario.idcentro_formacion,
           centroFormacion: funcionario.idcentro_formacion,
-          perfil: 'Funcionario'
-        }
+          perfil: 'Funcionario',
+        },
       })
     } catch (error) {
       if (error.code === 'E_ROW_NOT_FOUND') {
         return response.status(404).json({
           success: false,
-          message: 'Funcionario no encontrado'
+          message: 'Funcionario no encontrado',
         })
       }
       console.error('Error en actualizarFuncionario:', error)
       return response.status(500).json({
         success: false,
         message: 'Error al actualizar el funcionario',
-        error: error.message
+        error: error.message,
       })
     }
   }
@@ -534,47 +509,67 @@ export default class UsuariosController {
   async crearColaborador({ request, response }: HttpContext) {
     try {
       const actor = await resolverActor(request)
-      if (bloquearSiNoEsAdministrador(actor, response)) return
+      if (bloquearSiNoPuedeGestionarUsuariosCentro(actor, response) || !actor) return
 
-      const { nombres, apellidos, celular, tipo_documento, numero_documento, email, password, estado, idcentro_formacion } = request.body()
+      const {
+        nombres,
+        apellidos,
+        celular,
+        tipo_documento,
+        numero_documento,
+        email,
+        password,
+        estado,
+        idcentro_formacion,
+      } = request.body()
+
+      if (!email || !nombres || !apellidos || !numero_documento) {
+        return response.status(400).json({
+          message: 'Faltan campos requeridos',
+          required: ['nombres', 'apellidos', 'numero_documento', 'email'],
+        })
+      }
 
       const existe = await Usuario.findBy('email', email)
       if (existe) {
         return response.status(400).json({ message: 'El email ya está registrado' })
       }
 
-      const perfilColaborador = await Perfil.findBy('perfil', 'colaborador')
+      const perfilColaborador = await buscarPerfilCanonico('colaborador')
       if (!perfilColaborador) {
         return response.status(500).json({
-          error: 'Perfil colaborador no configurado. Corre database/sql/perfil_colaborador.sql'
+          error: 'Perfil colaborador no configurado en el sistema',
         })
       }
 
-      if (!idcentro_formacion) {
+      const centroId = centroDestinoDeAlta(actor, idcentro_formacion, response)
+      if (centroId == null) return
+
+      const centro = await CentroFormacion.find(centroId)
+      if (!centro) {
         return response.status(400).json({
-          message: 'El colaborador debe tener un centro de formación',
+          success: false,
+          message: 'El centro de formación no existe',
         })
       }
 
-      const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash(numero_documento, 10)
+      const hashedPassword = password
+        ? await bcrypt.hash(password, 10)
+        : await bcrypt.hash(String(numero_documento), 10)
 
-      const usuario = new Usuario()
-      usuario.nombres = nombres
-      usuario.apellidos = apellidos
-      usuario.celular = celular
-      usuario.tipo_documento = tipo_documento
-      usuario.numero_documento = numero_documento
-      usuario.email = email
-      usuario.password = hashedPassword
-      usuario.estado = estado || 'Activo'
-      usuario.idperfil = perfilColaborador.idperfil
-      usuario.idcentro_formacion = idcentro_formacion
+      const usuario = await Usuario.create({
+        nombres,
+        apellidos,
+        celular: celular || '',
+        tipo_documento: tipo_documento || 'CC',
+        numero_documento,
+        email,
+        password: hashedPassword,
+        estado: estado || 'Activo',
+        idperfil: perfilColaborador.idperfil,
+        idcentro_formacion: centroId,
+      })
 
-      await usuario.save()
-
-      // No emitir cookie aquí: es un alta administrativa, no un login.
-      // emitirCookieAuth reemplazaba la sesión del Administrador de red
-      // por la del colaborador recién creado y rompía listado/creación siguientes.
       return response.status(201).json({
         success: true,
         message: 'Colaborador creado exitosamente',
@@ -600,7 +595,7 @@ export default class UsuariosController {
   async listarColaboradores({ request, response }: HttpContext) {
     try {
       const actor = await resolverActor(request)
-      if (bloquearSiNoEsAdministrador(actor, response)) return
+      if (bloquearSiNoPuedeGestionarUsuariosCentro(actor, response) || !actor) return
 
       const query = Usuario.query()
         .preload('perfil')
@@ -611,20 +606,26 @@ export default class UsuariosController {
           c.preload('regional')
         })
 
+      if (actor.esAdminSistema) {
+        query.where('idcentro_formacion', actor.idcentro!)
+      }
+
       const colaboradores = await query
 
-      return response.json(colaboradores.map((c) => ({
-        id: c.idusuarios,
-        nombres: c.nombres,
-        apellidos: c.apellidos,
-        celular: c.celular,
-        numeroDocumento: c.numero_documento,
-        email: c.email,
-        estado: c.estado,
-        perfil: 'colaborador',
-        idcentro_formacion: c.idcentro_formacion,
-        centroFormacion: c.centro,
-      })))
+      return response.json(
+        colaboradores.map((c) => ({
+          id: c.idusuarios,
+          nombres: c.nombres,
+          apellidos: c.apellidos,
+          celular: c.celular,
+          numeroDocumento: c.numero_documento,
+          email: c.email,
+          estado: c.estado,
+          perfil: 'colaborador',
+          idcentro_formacion: c.idcentro_formacion,
+          centroFormacion: c.centro,
+        }))
+      )
     } catch (error) {
       return response.status(500).json({ error: 'Error al listar colaboradores' })
     }

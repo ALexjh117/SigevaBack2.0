@@ -1,13 +1,26 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { storeCandidatoValidator } from '#validators/store_candidato_validator'
 import CandidatosService from '#services/candidatos_service'
+import {
+  bloquearSiCentroAjeno,
+  bloquearSiNoPuedeGestionarElecciones,
+  resolverActor,
+} from '#services/actor_sesion'
+import Eleccione from '#models/eleccione'
 
 export default class CandidatosController {
   public async store({ request, response }: HttpContext) {
-    // 1) Validar datos básicos con VineJS
+    const actor = await resolverActor(request)
+    if (bloquearSiNoPuedeGestionarElecciones(actor, response)) return
+
     const payload = await request.validateUsing(storeCandidatoValidator)
 
-    // 2) Leer archivo opcional (multipart/form-data)
+    const eleccion = await Eleccione.find(payload.ideleccion)
+    if (!eleccion) {
+      return response.badRequest({ message: 'La elección no existe' })
+    }
+    if (bloquearSiCentroAjeno(actor, eleccion.idcentro_formacion, response)) return
+
     const fotoFile = request.file('foto', {
       size: '5mb',
       extnames: ['jpg', 'jpeg', 'png', 'webp'],
@@ -38,9 +51,12 @@ export default class CandidatosController {
     }
   }
 
-  public async getbycentroformacion({ params, response }: HttpContext) {
+  public async getbycentroformacion({ params, request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
       const { idcentro_formacion } = params
+      if (bloquearSiCentroAjeno(actor, idcentro_formacion, response)) return
+
       const candidatos = await CandidatosService.getCandidatoCentroFormacion(
         Number(idcentro_formacion)
       )
@@ -64,6 +80,10 @@ export default class CandidatosController {
         })
       }
 
+      const actor = await resolverActor(request)
+      const eleccion = await Eleccione.find(ideleccion)
+      if (eleccion && bloquearSiCentroAjeno(actor, eleccion.idcentro_formacion, response)) return
+
       const { jornada } = request.qs()
       const candidatos = await CandidatosService.getAllCandidatosByIdEleccion(
         Number(ideleccion),
@@ -83,6 +103,9 @@ export default class CandidatosController {
 
   public async update({ params, request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearSiNoPuedeGestionarElecciones(actor, response)) return
+
       const idcandidatos = Number(params.id)
       if (Number.isNaN(idcandidatos)) {
         return response.badRequest({ message: 'El parámetro id debe ser numérico' })
@@ -103,6 +126,11 @@ export default class CandidatosController {
         'foto_url',
       ])
 
+      if (data.ideleccion) {
+        const eleccion = await Eleccione.find(data.ideleccion)
+        if (eleccion && bloquearSiCentroAjeno(actor, eleccion.idcentro_formacion, response)) return
+      }
+
       const candidato = await CandidatosService.updateCandidatos(
         idcandidatos,
         data,
@@ -120,8 +148,11 @@ export default class CandidatosController {
     }
   }
 
-  public async delete({ params, response }: HttpContext) {
+  public async delete({ params, request, response }: HttpContext) {
     try {
+      const actor = await resolverActor(request)
+      if (bloquearSiNoPuedeGestionarElecciones(actor, response)) return
+
       const idcandidatos = Number(params.id)
       if (Number.isNaN(idcandidatos)) {
         return response.badRequest({ message: 'El parámetro id debe ser numérico' })
